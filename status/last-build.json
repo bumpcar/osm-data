@@ -1,5 +1,5 @@
 {
- "created": "2026-11-05T18:56:26Z",
+ "created": "2026-11-05T19:56:17Z",
  "data_date": "2026-11-03T21:24:23Z",
  "regions": {
   "DE-BY": {
@@ -7,20 +7,20 @@
    "cameras": 143,
    "limits_bytes": 8572164,
    "seconds": {
-    "download": 75.1,
-    "roads": 326.9,
-    "cameras": 204.7,
-    "compress_limits": 4.4
+    "download": 78.0,
+    "roads": 329.4,
+    "cameras": 201.6,
+    "compress_limits": 3.7
    }
   },
   "IT-BZ": {
    "roads": 33285,
    "cameras": 152,
-   "limits_bytes": 449519,
+   "limits_bytes": 453640,
    "seconds": {
-    "download": 51.5,
-    "roads": 238.9,
-    "cameras": 180.8,
+    "download": 32.1,
+    "roads": 246.0,
+    "cameras": 182.4,
     "compress_limits": 0.1
    }
   }
