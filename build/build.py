@@ -41,6 +41,9 @@ HIGHWAYS = {
     "living_street", "motorway_link", "trunk_link", "primary_link", "secondary_link", "tertiary_link",
 }
 
+RETRIES = 4
+RETRY_WAIT_S = 120
+
 ZONES = {
     "IT:urban": 50, "IT:rural": 90, "IT:trunk": 110, "IT:motorway": 130,
     "AT:urban": 50, "AT:rural": 100, "AT:motorway": 130,
@@ -530,9 +533,17 @@ def download(url, target):
     print(f"downloading {url}")
     partial = target.with_name(target.name + ".part")
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(request) as response, partial.open("wb") as out:
-        while chunk := response.read(1 << 20):
-            out.write(chunk)
+    for attempt in range(RETRIES):
+        try:
+            with urllib.request.urlopen(request) as response, partial.open("wb") as out:
+                while chunk := response.read(1 << 20):
+                    out.write(chunk)
+            break
+        except OSError as e:
+            if attempt == RETRIES - 1:
+                raise
+            print(f"download failed, trying again: {e}", flush=True)
+            time.sleep(RETRY_WAIT_S * (attempt + 1))
     partial.replace(target)
 
 

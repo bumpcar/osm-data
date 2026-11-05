@@ -3,294 +3,294 @@
     "name": "Österreich",
     "country": "AT",
     "path": "europe/austria-latest.osm.pbf",
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 280825,
+    "min_cameras": 698
   },
   "CH": {
     "name": "Schweiz",
     "country": "CH",
     "path": "europe/switzerland-latest.osm.pbf",
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 207145,
+    "min_cameras": 300
   },
   "DE-BB": {
     "name": "Brandenburg",
     "country": "DE",
     "path": "europe/germany/brandenburg-latest.osm.pbf",
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 116618,
+    "min_cameras": 142
   },
   "DE-BE": {
     "name": "Berlin",
     "country": "DE",
     "path": "europe/germany/berlin-latest.osm.pbf",
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 45945,
+    "min_cameras": 34
   },
   "DE-BW": {
     "name": "Baden-Württemberg",
     "country": "DE",
     "path": "europe/germany/baden-wuerttemberg-latest.osm.pbf",
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 285766,
+    "min_cameras": 780
   },
   "DE-BY": {
     "name": "Bayern",
     "country": "DE",
     "path": "europe/germany/bayern-latest.osm.pbf",
-    "min_roads": 375000,
-    "min_cameras": 70
+    "min_roads": 377239,
+    "min_cameras": 71
   },
   "DE-HB": {
     "name": "Bremen",
     "country": "DE",
     "path": "europe/germany/bremen-latest.osm.pbf",
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 8446,
+    "min_cameras": 27
   },
   "DE-HE": {
     "name": "Hessen",
     "country": "DE",
     "path": "europe/germany/hessen-latest.osm.pbf",
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 154702,
+    "min_cameras": 426
   },
   "DE-HH": {
     "name": "Hamburg",
     "country": "DE",
     "path": "europe/germany/hamburg-latest.osm.pbf",
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 19940,
+    "min_cameras": 18
   },
   "DE-MV": {
     "name": "Mecklenburg-Vorpommern",
     "country": "DE",
     "path": "europe/germany/mecklenburg-vorpommern-latest.osm.pbf",
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 51002,
+    "min_cameras": 49
   },
   "DE-NI": {
     "name": "Niedersachsen",
     "country": "DE",
     "path": "europe/germany/niedersachsen-latest.osm.pbf",
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 231748,
+    "min_cameras": 321
   },
   "DE-NW": {
     "name": "Nordrhein-Westfalen",
     "country": "DE",
     "path": "europe/germany/nordrhein-westfalen-latest.osm.pbf",
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 360850,
+    "min_cameras": 472
   },
   "DE-RP": {
     "name": "Rheinland-Pfalz",
     "country": "DE",
     "path": "europe/germany/rheinland-pfalz-latest.osm.pbf",
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 120656,
+    "min_cameras": 54
   },
   "DE-SH": {
     "name": "Schleswig-Holstein",
     "country": "DE",
     "path": "europe/germany/schleswig-holstein-latest.osm.pbf",
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 68340,
+    "min_cameras": 41
   },
   "DE-SL": {
     "name": "Saarland",
     "country": "DE",
     "path": "europe/germany/saarland-latest.osm.pbf",
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 21784,
+    "min_cameras": 29
   },
   "DE-SN": {
     "name": "Sachsen",
     "country": "DE",
     "path": "europe/germany/sachsen-latest.osm.pbf",
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 109976,
+    "min_cameras": 135
   },
   "DE-ST": {
     "name": "Sachsen-Anhalt",
     "country": "DE",
     "path": "europe/germany/sachsen-anhalt-latest.osm.pbf",
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 81590,
+    "min_cameras": 33
   },
   "DE-TH": {
     "name": "Thüringen",
     "country": "DE",
     "path": "europe/germany/thueringen-latest.osm.pbf",
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 69438,
+    "min_cameras": 43
   },
   "IT-21": {
     "name": "Piemont",
     "country": "IT",
     "path": "europe/italy/nord-ovest-latest.osm.pbf",
     "cut": true,
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 111946,
+    "min_cameras": 283
   },
   "IT-23": {
     "name": "Aostatal",
     "country": "IT",
     "path": "europe/italy/nord-ovest-latest.osm.pbf",
     "cut": true,
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 5882,
+    "min_cameras": 12
   },
   "IT-25": {
     "name": "Lombardei",
     "country": "IT",
     "path": "europe/italy/nord-ovest-latest.osm.pbf",
     "cut": true,
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 206504,
+    "min_cameras": 427
   },
   "IT-34": {
     "name": "Venetien",
     "country": "IT",
     "path": "europe/italy/nord-est-latest.osm.pbf",
     "cut": true,
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 122597,
+    "min_cameras": 381
   },
   "IT-36": {
     "name": "Friaul-Julisch Venetien",
     "country": "IT",
     "path": "europe/italy/nord-est-latest.osm.pbf",
     "cut": true,
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 39676,
+    "min_cameras": 97
   },
   "IT-42": {
     "name": "Ligurien",
     "country": "IT",
     "path": "europe/italy/nord-ovest-latest.osm.pbf",
     "cut": true,
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 29951,
+    "min_cameras": 61
   },
   "IT-45": {
     "name": "Emilia-Romagna",
     "country": "IT",
     "path": "europe/italy-latest.osm.pbf",
     "cut": true,
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 105925,
+    "min_cameras": 310
   },
   "IT-52": {
     "name": "Toskana",
     "country": "IT",
     "path": "europe/italy/centro-latest.osm.pbf",
     "cut": true,
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 88220,
+    "min_cameras": 286
   },
   "IT-55": {
     "name": "Umbrien",
     "country": "IT",
     "path": "europe/italy/centro-latest.osm.pbf",
     "cut": true,
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 26363,
+    "min_cameras": 82
   },
   "IT-57": {
     "name": "Marken",
     "country": "IT",
     "path": "europe/italy/centro-latest.osm.pbf",
     "cut": true,
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 44861,
+    "min_cameras": 91
   },
   "IT-62": {
     "name": "Latium",
     "country": "IT",
     "path": "europe/italy-latest.osm.pbf",
     "cut": true,
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 78982,
+    "min_cameras": 118
   },
   "IT-65": {
     "name": "Abruzzen",
     "country": "IT",
     "path": "europe/italy/sud-latest.osm.pbf",
     "cut": true,
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 39632,
+    "min_cameras": 49
   },
   "IT-67": {
     "name": "Molise",
     "country": "IT",
     "path": "europe/italy/sud-latest.osm.pbf",
     "cut": true,
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 10527,
+    "min_cameras": 2
   },
   "IT-72": {
     "name": "Kampanien",
     "country": "IT",
     "path": "europe/italy/sud-latest.osm.pbf",
     "cut": true,
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 68742,
+    "min_cameras": 76
   },
   "IT-75": {
     "name": "Apulien",
     "country": "IT",
     "path": "europe/italy-latest.osm.pbf",
     "cut": true,
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 83829,
+    "min_cameras": 41
   },
   "IT-77": {
     "name": "Basilikata",
     "country": "IT",
     "path": "europe/italy/sud-latest.osm.pbf",
     "cut": true,
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 19898,
+    "min_cameras": 5
   },
   "IT-78": {
     "name": "Kalabrien",
     "country": "IT",
     "path": "europe/italy/sud-latest.osm.pbf",
     "cut": true,
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 46343,
+    "min_cameras": 20
   },
   "IT-82": {
     "name": "Sizilien",
     "country": "IT",
     "path": "europe/italy/isole-latest.osm.pbf",
     "cut": true,
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 105092,
+    "min_cameras": 40
   },
   "IT-88": {
     "name": "Sardinien",
     "country": "IT",
     "path": "europe/italy/isole-latest.osm.pbf",
     "cut": true,
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 60367,
+    "min_cameras": 14
   },
   "IT-BZ": {
     "name": "Südtirol",
     "country": "IT",
     "path": "europe/italy/nord-est-latest.osm.pbf",
     "cut": true,
-    "min_roads": 16000,
-    "min_cameras": 75
+    "min_roads": 16642,
+    "min_cameras": 76
   },
   "IT-TN": {
     "name": "Trentino",
     "country": "IT",
     "path": "europe/italy/nord-est-latest.osm.pbf",
     "cut": true,
-    "min_roads": 1000,
-    "min_cameras": 0
+    "min_roads": 19949,
+    "min_cameras": 90
   }
 }
