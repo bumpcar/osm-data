@@ -330,6 +330,8 @@ def main():
     roads.apply_file(str(pbf), locations=True, idx="flex_mem")
     roads.flush()
     db.execute("INSERT INTO meta SELECT 'max_lat_span', MAX(maxLat - minLat) FROM road")
+    db.execute("INSERT INTO meta SELECT 'road_count', COUNT(*) FROM road")
+    db.execute("INSERT INTO meta SELECT 'road_count_with_limit', COUNT(*) FROM road WHERE forwardKmh IS NOT NULL OR backwardKmh IS NOT NULL")
     db.commit()
     db.execute("VACUUM")
     db.close()
