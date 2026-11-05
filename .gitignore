@@ -1,0 +1,7 @@
+out/
+work/
+release/
+__pycache__/
+venv/
+*.sqlite
+*.osm.pbf

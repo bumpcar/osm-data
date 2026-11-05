@@ -1,0 +1,88 @@
+name: Build data packages
+
+on:
+  schedule:
+    - cron: "0 2 3 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regions:
+    runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.read.outputs.list }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: read
+        run: python3 -c "import json;print('list='+json.dumps(list(json.load(open('regions.json')))))" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: regions
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      max-parallel: 4
+      matrix:
+        region: ${{ fromJSON(needs.regions.outputs.list) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: pip install -r build/requirements.txt
+      - run: python -m unittest test_build
+        working-directory: build
+      - run: python build/build.py "${{ matrix.region }}" --out out --work work
+      - uses: actions/upload-artifact@v7
+        with:
+          name: package-${{ matrix.region }}
+          path: out/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 3
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: pip install -r build/requirements.txt
+      - uses: actions/download-artifact@v8
+        with:
+          path: release/
+          merge-multiple: true
+      - name: Sign
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        run: python build/sign.py release
+      - name: Verify
+        run: python build/verify.py release
+      - name: Publish
+        run: |
+          tag="data-$(date -u +%Y-%m-%d)-r${GITHUB_RUN_NUMBER}"
+          data_date="$(python3 -c "import json;print(json.load(open('release/index.json'))['data_date'][:10])")"
+          cp LICENSE-ODbL.txt README.md release/
+          gh release create "$tag" --latest --title "$data_date" \
+            --notes "© OpenStreetMap contributors, ODbL 1.0" \
+            release/*.zst release/index.json release/index.json.sig release/LICENSE-ODbL.txt release/README.md
+      - name: Keep the last three releases
+        run: |
+          gh release list --limit 100 --json tagName,createdAt --jq 'sort_by(.createdAt) | reverse | .[3:] | .[].tagName' |
+            while read -r old; do gh release delete "$old" --yes --cleanup-tag; done
+      - name: Record the build
+        run: |
+          cp release/build-status.json status/last-build.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add status/last-build.json
+          git commit -m "Update status"
+          git push
