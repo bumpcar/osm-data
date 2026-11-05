@@ -24,7 +24,10 @@ import zstandard
 
 GEOFABRIK = "https://download.geofabrik.de/"
 USER_AGENT = "bumpcar-osm-packages"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+TOLERANCE_M = 5.0
+CELL_E6 = 20_000  # 0.02 degrees
+COORD_STEP = 10  # stored in 1e-5 degrees, about 1 m
 ZSTD_LEVEL = 19
 
 # Minimum counts per region: a build below them is broken and stops instead of being published.
@@ -128,12 +131,7 @@ def new_database(path, schema, meta):
 
 
 ROAD_SCHEMA = """
-CREATE TABLE road (
-    wayId INTEGER PRIMARY KEY NOT NULL, minLat INTEGER NOT NULL, maxLat INTEGER NOT NULL,
-    minLon INTEGER NOT NULL, maxLon INTEGER NOT NULL, forwardKmh INTEGER, backwardKmh INTEGER,
-    points BLOB NOT NULL
-);
-CREATE INDEX index_road_box ON road (minLat, maxLat, minLon, maxLon);
+CREATE TABLE cell (id INTEGER PRIMARY KEY NOT NULL, data BLOB NOT NULL);
 """
 
 CAMERA_SCHEMA = """
@@ -151,11 +149,90 @@ CREATE INDEX index_speed_section_startLat_startLon ON speed_section (startLat, s
 """
 
 
+def simplify(points, tolerance_m=TOLERANCE_M):
+    """Douglas-Peucker on (lat, lon) in micro degrees."""
+    if len(points) < 3:
+        return points
+    metres = 0.111195
+    cos_lat = math.cos(math.radians(points[0][0] / 1e6))
+    keep = [False] * len(points)
+    keep[0] = keep[-1] = True
+    stack = [(0, len(points) - 1)]
+    limit = tolerance_m * tolerance_m
+    while stack:
+        first, last = stack.pop()
+        if last <= first + 1:
+            continue
+        ax, ay = points[first][1] * cos_lat * metres, points[first][0] * metres
+        dx, dy = points[last][1] * cos_lat * metres - ax, points[last][0] * metres - ay
+        length = dx * dx + dy * dy
+        worst, at = -1.0, -1
+        for i in range(first + 1, last):
+            px, py = points[i][1] * cos_lat * metres - ax, points[i][0] * metres - ay
+            u = 0.0 if length == 0 else max(0.0, min(1.0, (px * dx + py * dy) / length))
+            ex, ey = px - u * dx, py - u * dy
+            error = ex * ex + ey * ey
+            if error > worst:
+                worst, at = error, i
+        if worst > limit:
+            keep[at] = True
+            stack += [(first, at), (at, last)]
+    return [point for point, kept in zip(points, keep) if kept]
+
+
+def cell_id(lat_index, lon_index):
+    return (lat_index << 20) | (lon_index & 0xFFFFF)
+
+
+def cut_into_cells(points):
+    """Pieces of a road per grid cell: {(lat index, lon index): [[point, ...], ...]}."""
+    cells = defaultdict(list)
+    current = {}
+    for i in range(len(points) - 1):
+        a, b = points[i], points[i + 1]
+        for la in range(min(a[0], b[0]) // CELL_E6, max(a[0], b[0]) // CELL_E6 + 1):
+            for lo in range(min(a[1], b[1]) // CELL_E6, max(a[1], b[1]) // CELL_E6 + 1):
+                piece = current.get((la, lo))
+                if piece is not None and piece[1] == i:
+                    piece[0].append(b)
+                    piece[1] = i + 1
+                else:
+                    piece = [[a, b], i + 1]
+                    current[(la, lo)] = piece
+                    cells[(la, lo)].append(piece[0])
+    return cells
+
+
+def write_varint(value, out):
+    while value >= 128:
+        out.append(value & 127 | 128)
+        value >>= 7
+    out.append(value)
+
+
+def encode_cell(lat_index, lon_index, pieces):
+    """pieces: (forward km/h or None, backward km/h or None, points). Differences from the cell corner."""
+    out = bytearray()
+    write_varint(len(pieces), out)
+    origin_lat = lat_index * CELL_E6 // COORD_STEP
+    origin_lon = lon_index * CELL_E6 // COORD_STEP
+    for forward, backward, points in pieces:
+        out.append(forward or 0)
+        out.append(backward or 0)
+        write_varint(len(points), out)
+        last_lat, last_lon = origin_lat, origin_lon
+        for lat, lon in points:
+            lat, lon = round(lat / COORD_STEP), round(lon / COORD_STEP)
+            for delta in (lat - last_lat, lon - last_lon):
+                write_varint((delta << 1) ^ (delta >> 63), out)
+            last_lat, last_lon = lat, lon
+    return bytes(out)
+
+
 class RoadHandler(osmium.SimpleHandler):
-    def __init__(self, db):
+    def __init__(self):
         super().__init__()
-        self.db = db
-        self.batch = []
+        self.cells = defaultdict(list)
         self.points_total = 0
         self.skipped = 0
         self.by_class = defaultdict(lambda: {"ways": 0, "km": 0.0, "ways_with_limit": 0, "km_with_limit": 0.0})
@@ -164,33 +241,23 @@ class RoadHandler(osmium.SimpleHandler):
         highway = w.tags.get("highway")
         if highway not in HIGHWAYS:
             return
-        points = []
-        for n in w.nodes:
-            if n.location.valid():
-                points.append(round(n.location.lat * 1e6))
-                points.append(round(n.location.lon * 1e6))
-        if len(points) < 4:
+        points = [(round(n.location.lat * 1e6), round(n.location.lon * 1e6)) for n in w.nodes if n.location.valid()]
+        if len(points) < 2:
             self.skipped += 1
             return
         tags = {t.k: t.v for t in w.tags if "maxspeed" in t.k}
         forward, backward = road_limits(tags)
-        lats, lons = points[0::2], points[1::2]
-        self.batch.append((w.id, min(lats), max(lats), min(lons), max(lons), forward, backward,
-                           struct.pack(f"<{len(points)}i", *points)))
-        self.points_total += len(points) // 2
-        km = length_km(points)
+        km = length_km([value for point in points for value in point])
+        simple = simplify(points)
+        self.points_total += len(simple)
+        for key, pieces in cut_into_cells(simple).items():
+            self.cells[key].extend((forward, backward, piece) for piece in pieces)
         c = self.by_class[highway]
         c["ways"] += 1
         c["km"] += km
         if forward is not None or backward is not None:
             c["ways_with_limit"] += 1
             c["km_with_limit"] += km
-        if len(self.batch) >= 5000:
-            self.flush()
-
-    def flush(self):
-        self.db.executemany("INSERT INTO road VALUES (?,?,?,?,?,?,?,?)", self.batch)
-        self.batch.clear()
 
 
 class RelationHandler(osmium.SimpleHandler):
@@ -326,12 +393,15 @@ def main():
     t = time.monotonic()
     road_path = args.out / f"{args.region}.limits.sqlite"
     db = new_database(road_path, ROAD_SCHEMA, {**meta, "layer": "limits"})
-    roads = RoadHandler(db)
+    roads = RoadHandler()
     roads.apply_file(str(pbf), locations=True, idx="flex_mem")
-    roads.flush()
-    db.execute("INSERT INTO meta SELECT 'max_lat_span', MAX(maxLat - minLat) FROM road")
-    db.execute("INSERT INTO meta SELECT 'road_count', COUNT(*) FROM road")
-    db.execute("INSERT INTO meta SELECT 'road_count_with_limit', COUNT(*) FROM road WHERE forwardKmh IS NOT NULL OR backwardKmh IS NOT NULL")
+    db.executemany("INSERT INTO cell VALUES (?, ?)", ((cell_id(la, lo), encode_cell(la, lo, pieces)) for (la, lo), pieces in roads.cells.items()))
+    db.executemany("INSERT INTO meta VALUES (?, ?)", [
+        ("cell_e6", str(CELL_E6)),
+        ("coord_step", str(COORD_STEP)),
+        ("road_count", str(sum(c["ways"] for c in roads.by_class.values()))),
+        ("road_count_with_limit", str(sum(c["ways_with_limit"] for c in roads.by_class.values()))),
+    ])
     db.commit()
     db.execute("VACUUM")
     db.close()

@@ -1,7 +1,7 @@
 """Filter rules. Run: python -m unittest test_build (in this folder)."""
 import unittest
 
-from build import build_cameras, camera_direction, camera_limit, parse_limit, road_limits
+from build import CELL_E6, build_cameras, camera_direction, camera_limit, cell_id, cut_into_cells, encode_cell, parse_limit, road_limits, simplify
 
 
 class ParseLimit(unittest.TestCase):
@@ -49,6 +49,27 @@ class Cameras(unittest.TestCase):
         cameras, _ = build_cameras(relations, nodes)
         self.assertEqual(80, cameras[0][3])
         self.assertAlmostEqual(0.0, cameras[0][4])
+
+
+class Cells(unittest.TestCase):
+    def test_straight_points_go_and_bends_stay(self):
+        points = [(48000000, 11000000), (48000100, 11000100), (48000200, 11000200)]
+        self.assertEqual([points[0], points[2]], simplify(points))
+        bend = [(48000000, 11000000), (48001000, 11001000), (48000000, 11002000)]
+        self.assertEqual(bend, simplify(bend))
+
+    def test_road_is_cut_at_the_cell_border(self):
+        a, b, c = (48010000, 11010000), (48019000, 11010000), (48021000, 11010000)
+        cells = cut_into_cells([a, b, c])
+        self.assertEqual([[a, b, c]], cells[(48010000 // CELL_E6, 11010000 // CELL_E6)])
+        self.assertEqual([[b, c]], cells[(48021000 // CELL_E6, 11010000 // CELL_E6)])
+
+    def test_cell_id_of_negative_longitude(self):
+        self.assertEqual((5 << 20) | 0xFFFFF, cell_id(5, -1))
+
+    def test_bytes_the_app_test_expects(self):
+        data = encode_cell(2400, 550, [(50, None, [(48000000, 11000000), (48000100, 11000050)]), (None, 30, [(48010000, 11010000), (48010010, 11009990)])])
+        self.assertEqual("023200020000140a001e02d00fd00f0201", data.hex())
 
 
 if __name__ == "__main__":
