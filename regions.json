@@ -176,7 +176,7 @@
   "IT-45": {
     "name": "Emilia-Romagna",
     "country": "IT",
-    "path": "europe/italy/nord-est-latest.osm.pbf",
+    "path": "europe/italy-latest.osm.pbf",
     "cut": true,
     "min_roads": 1000,
     "min_cameras": 0
@@ -208,7 +208,7 @@
   "IT-62": {
     "name": "Latium",
     "country": "IT",
-    "path": "europe/italy/centro-latest.osm.pbf",
+    "path": "europe/italy-latest.osm.pbf",
     "cut": true,
     "min_roads": 1000,
     "min_cameras": 0
@@ -240,7 +240,7 @@
   "IT-75": {
     "name": "Apulien",
     "country": "IT",
-    "path": "europe/italy/sud-latest.osm.pbf",
+    "path": "europe/italy-latest.osm.pbf",
     "cut": true,
     "min_roads": 1000,
     "min_cameras": 0
