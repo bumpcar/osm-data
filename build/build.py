@@ -57,6 +57,10 @@ DEFAULTS = {
         "urban": {"primary": 50, "secondary": 50, "tertiary": 50, "residential": 30},
         "rural": {"primary": 100, "secondary": 100, "tertiary": 100},
     },
+    # Codice della Strada art. 142: 50 in towns. Rural 90 is too high on most tagged roads; 30 is measured.
+    "IT": {
+        "urban": {"primary": 50, "secondary": 50, "residential": 30},
+    },
 }
 SETTLEMENT = {"residential", "commercial", "retail", "industrial"}
 SIDEWALK_KEYS = ("sidewalk", "sidewalk:both", "sidewalk:left", "sidewalk:right")

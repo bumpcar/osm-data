@@ -72,6 +72,13 @@ class Defaults(unittest.TestCase):
         self.assertEqual(0, default_for(self.RULES, "tertiary", False, True))
         self.assertEqual(0, default_for({}, "tertiary", False, False))
 
+    def test_italy_has_no_rural_default(self):
+        rules = build.DEFAULTS["IT"]
+        self.assertEqual(build.default_for(rules, "primary", True, False), build.default_byte(50))
+        self.assertEqual(build.default_for(rules, "residential", True, False), build.default_byte(30))
+        self.assertEqual(build.default_for(rules, "primary", False, False), 0)
+        self.assertEqual(build.default_for(rules, "tertiary", True, False), 0)
+
     def test_side_from_tags(self):
         self.assertIs(True, side_from_tags("tertiary", {"zone:traffic": "DE:urban"}))
         self.assertIs(False, side_from_tags("tertiary", {"zone:traffic": "DE:rural", "lit": "yes"}))
