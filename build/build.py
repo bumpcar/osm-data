@@ -310,8 +310,48 @@ class Roads:
         self.by_class = defaultdict(empty_class)
 
 
-def read_roads(pbf, country):
-    """All drivable roads of an extract, cut into cells, with their limit bytes."""
+def read_boundary(pbf, iso_code):
+    """The area with this ISO 3166-2 code, for regions Geofabrik has no extract of."""
+    wkb = osmium.geom.WKBFactory()
+    parts = []
+    objects = osmium.FileProcessor(str(pbf), osmium.osm.RELATION | osmium.osm.WAY | osmium.osm.NODE)
+    for o in objects.with_areas(osmium.filter.TagFilter(("ISO3166-2", iso_code))).with_filter(osmium.filter.EntityFilter(osmium.osm.AREA)):
+        if o.tags.get("ISO3166-2") == iso_code:
+            parts.append(shapely.from_wkb(wkb.create_multipolygon(o)))
+    if not parts:
+        sys.exit(f"no boundary for {iso_code}")
+    boundary = shapely.union_all(parts)
+    shapely.prepare(boundary)
+    return boundary
+
+
+def boundary_outline(boundary, tolerance_m=OUTLINE_TOLERANCE_M):
+    """Outer rings as flat, simplified lat, lon values, as parse_outline gives them."""
+    rings = []
+    for polygon in shapely.get_parts(boundary):
+        points = [(round(lat * 1e6), round(lon * 1e6)) for lon, lat in polygon.exterior.coords]
+        rings.append([round(value / 1e6, 3) for point in simplify(points, tolerance_m) for value in point])
+    return rings
+
+
+def way_touches(boundary, points):
+    """A road crossing the border stays whole. points in micro degrees."""
+    lats, lons = [p[0] / 1e6 for p in points], [p[1] / 1e6 for p in points]
+    west, south, east, north = shapely.bounds(boundary)
+    if max(lats) < south or min(lats) > north or max(lons) < west or min(lons) > east:
+        return False
+    return bool(shapely.intersects(boundary, shapely.linestrings(list(zip(lons, lats)))))
+
+
+def cameras_inside(boundary, cameras, sections):
+    """Cameras in the boundary, and sections starting or ending there."""
+    inside = lambda lat, lon: bool(shapely.contains_xy(boundary, lon, lat))
+    return ([c for c in cameras if inside(c[1], c[2])],
+            [s for s in sections if inside(s[1], s[2]) or inside(s[3], s[4])])
+
+
+def read_roads(pbf, country, boundary=None):
+    """All drivable roads of an extract, or those touching boundary, cut into cells, with their limit bytes."""
     rules = DEFAULTS.get(country, {})
     classes = set(rules.get("urban", {})) | set(rules.get("rural", {}))
     roads = Roads()
@@ -331,6 +371,8 @@ def read_roads(pbf, country):
         points = [(round(n.location.lat * 1e6), round(n.location.lon * 1e6)) for n in o.nodes if n.location.valid()]
         if len(points) < 2:
             roads.skipped += 1
+            continue
+        if boundary is not None and not way_touches(boundary, points):
             continue
         tags = {t.k: t.v for t in o.tags}
         forward, backward = road_limits(tags)
@@ -514,7 +556,8 @@ def main():
         download(GEOFABRIK + region["path"], pbf)
     step("download", t)
     report["source_bytes"] = pbf.stat().st_size
-    report["outline"] = fetch_outline(region["path"])
+    boundary = read_boundary(pbf, args.region) if region.get("cut") else None
+    report["outline"] = boundary_outline(boundary) if boundary is not None else fetch_outline(region["path"])
 
     header = osmium.io.Reader(str(pbf), osmium.osm.osm_entity_bits.NOTHING)
     data_date = header.header().get("osmosis_replication_timestamp")
@@ -526,7 +569,7 @@ def main():
     t = time.monotonic()
     road_path = args.out / f"{args.region}.limits.sqlite"
     db = new_database(road_path, ROAD_SCHEMA, {**meta, "layer": "limits"})
-    roads = read_roads(pbf, region["country"])
+    roads = read_roads(pbf, region["country"], boundary)
     db.executemany("INSERT INTO cell VALUES (?, ?)", ((cell_id(la, lo), encode_cell(la, lo, pieces)) for (la, lo), pieces in roads.cells.items()))
     db.executemany("INSERT INTO meta VALUES (?, ?)", [
         ("cell_e6", str(CELL_E6)),
@@ -545,6 +588,8 @@ def main():
     nodes = NodeHandler(relations.wanted)
     nodes.apply_file(str(pbf))
     cameras, sections = build_cameras(relations.relations, nodes.nodes)
+    if boundary is not None:
+        cameras, sections = cameras_inside(boundary, cameras, sections)
     camera_path = args.out / f"{args.region}.cameras.sqlite"
     db = new_database(camera_path, CAMERA_SCHEMA, {**meta, "layer": "cameras"})
     db.executemany("INSERT INTO speed_camera VALUES (?,?,?,?,?,?,?,?,?)", cameras)

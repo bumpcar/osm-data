@@ -5,5 +5,13 @@
     "path": "europe/germany/bayern-latest.osm.pbf",
     "min_roads": 375000,
     "min_cameras": 70
+  },
+  "IT-BZ": {
+    "name": "Südtirol",
+    "country": "IT",
+    "path": "europe/italy/nord-est-latest.osm.pbf",
+    "cut": true,
+    "min_roads": 16000,
+    "min_cameras": 75
   }
 }

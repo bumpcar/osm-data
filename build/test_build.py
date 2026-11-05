@@ -1,7 +1,30 @@
 """Filter rules. Run: python -m unittest test_build (in this folder)."""
 import unittest
 
-from build import CELL_E6, UNLIMITED, build_cameras, camera_direction, camera_limit, cell_id, cut_into_cells, default_byte, default_for, encode_cell, parse_limit, parse_outline, road_limits, side_from_tags, simplify
+import shapely
+
+from build import CELL_E6, UNLIMITED, boundary_outline, build_cameras, camera_direction, cameras_inside, camera_limit, cell_id, cut_into_cells, default_byte, default_for, encode_cell, parse_limit, parse_outline, road_limits, side_from_tags, simplify, way_touches
+
+
+class Cut(unittest.TestCase):
+    area = shapely.box(11.0, 46.0, 12.0, 47.0)
+
+    def test_road_crossing_the_border_stays(self):
+        self.assertTrue(way_touches(self.area, [(46_500_000, 11_900_000), (46_500_000, 12_100_000)]))
+        self.assertTrue(way_touches(self.area, [(46_500_000, 10_900_000), (46_500_000, 12_100_000)]))
+        self.assertFalse(way_touches(self.area, [(47_500_000, 11_500_000), (47_600_000, 11_500_000)]))
+
+    def test_cameras_and_sections(self):
+        cameras = [("in", 46.5, 11.5), ("out", 47.5, 11.5)]
+        sections = [("start", 46.5, 11.5, 47.5, 11.5), ("end", 47.5, 11.5, 46.5, 11.5), ("out", 47.5, 11.5, 47.6, 11.5)]
+        inside, parts = cameras_inside(self.area, cameras, sections)
+        self.assertEqual(["in"], [c[0] for c in inside])
+        self.assertEqual(["start", "end"], [s[0] for s in parts])
+
+    def test_outline_is_lat_lon(self):
+        ring = boundary_outline(self.area)[0]
+        self.assertEqual({46.0, 47.0}, set(ring[0::2]))
+        self.assertEqual({11.0, 12.0}, set(ring[1::2]))
 
 
 class ParseLimit(unittest.TestCase):
