@@ -3,7 +3,7 @@ import unittest
 
 import shapely
 
-from build import CELL_E6, UNLIMITED, boundary_outline, build_cameras, camera_direction, cameras_inside, camera_limit, cell_id, cut_into_cells, default_byte, default_for, encode_cell, parse_limit, parse_outline, road_limits, side_from_tags, simplify, way_touches
+from build import DEFAULTS, CELL_E6, UNLIMITED, boundary_outline, build_cameras, camera_direction, cameras_inside, camera_limit, cell_id, cut_into_cells, default_byte, default_for, encode_cell, parse_limit, parse_outline, road_limits, side_from_tags, simplify, way_touches
 
 
 class Cut(unittest.TestCase):
@@ -73,11 +73,11 @@ class Defaults(unittest.TestCase):
         self.assertEqual(0, default_for({}, "tertiary", False, False))
 
     def test_italy_has_no_rural_default(self):
-        rules = build.DEFAULTS["IT"]
-        self.assertEqual(build.default_for(rules, "primary", True, False), build.default_byte(50))
-        self.assertEqual(build.default_for(rules, "residential", True, False), build.default_byte(30))
-        self.assertEqual(build.default_for(rules, "primary", False, False), 0)
-        self.assertEqual(build.default_for(rules, "tertiary", True, False), 0)
+        rules = DEFAULTS["IT"]
+        self.assertEqual(default_for(rules, "primary", True, False), default_byte(50))
+        self.assertEqual(default_for(rules, "residential", True, False), default_byte(30))
+        self.assertEqual(default_for(rules, "primary", False, False), 0)
+        self.assertEqual(default_for(rules, "tertiary", True, False), 0)
 
     def test_side_from_tags(self):
         self.assertIs(True, side_from_tags("tertiary", {"zone:traffic": "DE:urban"}))
