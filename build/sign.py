@@ -9,6 +9,7 @@ from pathlib import Path
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+REGIONS = json.loads((Path(__file__).resolve().parent.parent / "regions.json").read_text(encoding="utf-8"))
 FORMAT_VERSION = 1
 MIN_APP_VERSION = 0
 
@@ -47,6 +48,15 @@ def main():
         "data_date": min(r["data_date"] for r in reports),
         "attribution": "© OpenStreetMap contributors",
         "license": "ODbL 1.0",
+        "regions": [
+            {
+                "code": report["region"],
+                "name": REGIONS[report["region"]]["name"],
+                "country": REGIONS[report["region"]]["country"],
+                "outline": report["outline"],
+            }
+            for report in reports
+        ],
         "files": files,
     }
     data = json.dumps(index, indent=1, ensure_ascii=False).encode("utf-8")

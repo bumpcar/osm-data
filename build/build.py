@@ -26,6 +26,7 @@ GEOFABRIK = "https://download.geofabrik.de/"
 USER_AGENT = "bumpcar-osm-packages"
 SCHEMA_VERSION = 2
 TOLERANCE_M = 5.0
+OUTLINE_TOLERANCE_M = 2000.0
 CELL_E6 = 20_000  # 0.02 degrees
 COORD_STEP = 10  # stored in 1e-5 degrees, about 1 m
 ZSTD_LEVEL = 19
@@ -336,6 +337,32 @@ def build_cameras(relations, nodes):
     return cameras, sections
 
 
+def parse_outline(text, tolerance_m=OUTLINE_TOLERANCE_M):
+    """Geofabrik .poly to simplified rings of flat lat, lon values. Holes are left out."""
+    rings, ring = [], None
+    for line in text.splitlines()[1:]:
+        line = line.strip()
+        if ring is None:
+            if line and line != "END":
+                ring = [] if not line.startswith("!") else False
+        elif line == "END":
+            if ring:
+                points = simplify(ring, tolerance_m)
+                rings.append([value for lat, lon in points for value in (lat / 1e6, lon / 1e6)])
+            ring = None
+        elif ring is not False:
+            lon, lat = line.split()[:2]
+            ring.append((round(float(lat) * 1e6), round(float(lon) * 1e6)))
+    return [[round(value, 3) for value in ring] for ring in rings]
+
+
+def fetch_outline(path):
+    url = GEOFABRIK + path.replace("-latest.osm.pbf", ".poly")
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    with urllib.request.urlopen(request, timeout=60) as response:
+        return parse_outline(response.read().decode("utf-8"))
+
+
 def compress(path):
     """Writes path.zst and returns its description."""
     data = path.read_bytes()
@@ -382,6 +409,7 @@ def main():
         download(GEOFABRIK + region["path"], pbf)
     step("download", t)
     report["source_bytes"] = pbf.stat().st_size
+    report["outline"] = fetch_outline(region["path"])
 
     header = osmium.io.Reader(str(pbf), osmium.osm.osm_entity_bits.NOTHING)
     data_date = header.header().get("osmosis_replication_timestamp")

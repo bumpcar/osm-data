@@ -1,6 +1,7 @@
 {
   "DE-BY": {
     "name": "Bayern",
+    "country": "DE",
     "path": "europe/germany/bayern-latest.osm.pbf",
     "min_roads": 375000,
     "min_cameras": 70

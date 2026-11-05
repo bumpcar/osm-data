@@ -1,7 +1,7 @@
 """Filter rules. Run: python -m unittest test_build (in this folder)."""
 import unittest
 
-from build import CELL_E6, build_cameras, camera_direction, camera_limit, cell_id, cut_into_cells, encode_cell, parse_limit, road_limits, simplify
+from build import CELL_E6, build_cameras, camera_direction, camera_limit, cell_id, cut_into_cells, encode_cell, parse_limit, parse_outline, road_limits, simplify
 
 
 class ParseLimit(unittest.TestCase):
@@ -70,6 +70,13 @@ class Cells(unittest.TestCase):
     def test_bytes_the_app_test_expects(self):
         data = encode_cell(2400, 550, [(50, None, [(48000000, 11000000), (48000100, 11000050)]), (None, 30, [(48010000, 11010000), (48010010, 11009990)])])
         self.assertEqual("023200020000140a001e02d00fd00f0201", data.hex())
+
+
+class Outline(unittest.TestCase):
+    def test_rings_without_holes(self):
+        text = "\n".join(["x", "1", " 10.0 50.0", " 10.5 50.0", " 11.0 50.0", " 11.0 51.0", " 10.0 50.0", "END",
+                          "!2", " 10.2 50.2", " 10.3 50.2", " 10.2 50.2", "END", "END"])
+        self.assertEqual([[50.0, 10.0, 50.0, 11.0, 51.0, 11.0, 50.0, 10.0]], parse_outline(text))
 
 
 if __name__ == "__main__":
