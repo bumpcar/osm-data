@@ -556,8 +556,9 @@ def main():
     t = time.monotonic()
     pbf = args.input
     if pbf is None:
-        pbf = args.work / f"{args.region}.osm.pbf"
-        download(GEOFABRIK + region["path"], pbf)
+        pbf = args.work / Path(region["path"]).name
+        if not pbf.exists():
+            download(GEOFABRIK + region["path"], pbf)
     step("download", t)
     report["source_bytes"] = pbf.stat().st_size
     boundary = read_boundary(pbf, args.region) if region.get("cut") else None

@@ -13,17 +13,44 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       list: ${{ steps.read.outputs.list }}
+      shared: ${{ steps.read.outputs.shared }}
     steps:
       - uses: actions/checkout@v7
       - id: read
-        run: python3 -c "import json;print('list='+json.dumps(list(json.load(open('regions.json')))))" >> "$GITHUB_OUTPUT"
+        run: |
+          python3 -c "import json;print('list='+json.dumps(list(json.load(open('regions.json')))))" >> "$GITHUB_OUTPUT"
+          python3 -c "import json,collections;c=collections.Counter(r['path'] for r in json.load(open('regions.json')).values());print('shared='+json.dumps([p for p,n in c.items() if n>1]))" >> "$GITHUB_OUTPUT"
+
+  extracts:
+    needs: regions
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        path: ${{ fromJSON(needs.regions.outputs.shared) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: pip install -r build/requirements.txt
+      - id: name
+        run: echo "name=$(basename '${{ matrix.path }}')" >> "$GITHUB_OUTPUT"
+      - run: |
+          mkdir -p work
+          cd build
+          python -c "from pathlib import Path;from build import download,GEOFABRIK;download(GEOFABRIK+'${{ matrix.path }}',Path('../work/${{ steps.name.outputs.name }}'))"
+      - uses: actions/cache/save@v4
+        with:
+          path: work/${{ steps.name.outputs.name }}
+          key: extract-${{ steps.name.outputs.name }}-${{ github.run_id }}
 
   build:
-    needs: regions
+    needs: [regions, extracts]
     runs-on: ubuntu-latest
     timeout-minutes: 300
     strategy:
-      max-parallel: 4
+      fail-fast: false
+      max-parallel: 16
       matrix:
         region: ${{ fromJSON(needs.regions.outputs.list) }}
     steps:
@@ -34,6 +61,12 @@ jobs:
       - run: pip install -r build/requirements.txt
       - run: python -m unittest test_build
         working-directory: build
+      - id: extract
+        run: python3 -c "import json,os;print('name='+os.path.basename(json.load(open('regions.json'))['${{ matrix.region }}']['path']))" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@v4
+        with:
+          path: work/${{ steps.extract.outputs.name }}
+          key: extract-${{ steps.extract.outputs.name }}-${{ github.run_id }}
       - run: python build/build.py "${{ matrix.region }}" --out out --work work
       - uses: actions/upload-artifact@v7
         with:
