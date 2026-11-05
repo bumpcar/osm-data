@@ -133,7 +133,7 @@ CREATE TABLE road (
     minLon INTEGER NOT NULL, maxLon INTEGER NOT NULL, forwardKmh INTEGER, backwardKmh INTEGER,
     points BLOB NOT NULL
 );
-CREATE INDEX index_road_minLat ON road (minLat);
+CREATE INDEX index_road_box ON road (minLat, maxLat, minLon, maxLon);
 """
 
 CAMERA_SCHEMA = """
@@ -329,6 +329,7 @@ def main():
     roads = RoadHandler(db)
     roads.apply_file(str(pbf), locations=True, idx="flex_mem")
     roads.flush()
+    db.execute("INSERT INTO meta SELECT 'max_lat_span', MAX(maxLat - minLat) FROM road")
     db.commit()
     db.execute("VACUUM")
     db.close()
