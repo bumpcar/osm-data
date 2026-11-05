@@ -1,16 +1,16 @@
 {
- "created": "2026-11-05T16:08:33Z",
+ "created": "2026-11-05T17:59:24Z",
  "data_date": "2026-11-03T21:24:23Z",
  "regions": {
   "DE-BY": {
    "roads": 754478,
    "cameras": 143,
-   "limits_bytes": 8485398,
+   "limits_bytes": 8572164,
    "seconds": {
-    "download": 483.0,
-    "roads": 111.6,
-    "cameras": 207.6,
-    "compress_limits": 5.6
+    "download": 308.5,
+    "roads": 322.1,
+    "cameras": 199.0,
+    "compress_limits": 4.3
    }
   }
  }
