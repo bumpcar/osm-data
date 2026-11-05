@@ -64,6 +64,15 @@ DEFAULTS = {
     "IT": {
         "urban": {"primary": 50, "secondary": 50, "residential": 30},
     },
+    # StVO 1960 s. 20(2): 50 in towns. Rural 100 is too high on 38-43 % of tagged roads; 30 is measured.
+    "AT": {
+        "urban": {"primary": 50, "secondary": 50, "tertiary": 50, "residential": 30},
+    },
+    # VRV art. 4a: 50 in towns, 80 outside. 30 is measured.
+    "CH": {
+        "urban": {"primary": 50, "secondary": 50, "tertiary": 50, "residential": 30},
+        "rural": {"primary": 80, "secondary": 80, "tertiary": 80},
+    },
 }
 SETTLEMENT = {"residential", "commercial", "retail", "industrial"}
 SIDEWALK_KEYS = ("sidewalk", "sidewalk:both", "sidewalk:left", "sidewalk:right")
