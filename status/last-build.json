@@ -1,16 +1,412 @@
 {
- "created": "2026-11-05T19:56:17Z",
+ "created": "2026-11-05T21:12:59Z",
  "data_date": "2026-11-03T21:24:23Z",
  "regions": {
+  "AT": {
+   "roads": 561650,
+   "cameras": 1397,
+   "limits_bytes": 7147995,
+   "seconds": {
+    "download": 56.3,
+    "roads": 318.4,
+    "cameras": 220.8,
+    "compress_limits": 4.0
+   }
+  },
+  "CH": {
+   "roads": 414290,
+   "cameras": 601,
+   "limits_bytes": 4660480,
+   "seconds": {
+    "download": 119.4,
+    "roads": 215.3,
+    "cameras": 155.2,
+    "compress_limits": 1.6
+   }
+  },
+  "DE-BB": {
+   "roads": 233236,
+   "cameras": 285,
+   "limits_bytes": 2254687,
+   "seconds": {
+    "download": 23.5,
+    "roads": 105.0,
+    "cameras": 67.5,
+    "compress_limits": 0.6
+   }
+  },
+  "DE-BE": {
+   "roads": 91891,
+   "cameras": 68,
+   "limits_bytes": 646940,
+   "seconds": {
+    "download": 15.2,
+    "roads": 32.3,
+    "cameras": 20.5,
+    "compress_limits": 0.2
+   }
+  },
+  "DE-BW": {
+   "roads": 571532,
+   "cameras": 1560,
+   "limits_bytes": 5944996,
+   "seconds": {
+    "download": 103.5,
+    "roads": 239.1,
+    "cameras": 148.5,
+    "compress_limits": 2.1
+   }
+  },
   "DE-BY": {
    "roads": 754478,
    "cameras": 143,
    "limits_bytes": 8572164,
    "seconds": {
-    "download": 78.0,
-    "roads": 329.4,
-    "cameras": 201.6,
-    "compress_limits": 3.7
+    "download": 58.3,
+    "roads": 230.2,
+    "cameras": 140.1,
+    "compress_limits": 3.2
+   }
+  },
+  "DE-HB": {
+   "roads": 16893,
+   "cameras": 55,
+   "limits_bytes": 153465,
+   "seconds": {
+    "download": 3.2,
+    "roads": 5.7,
+    "cameras": 3.3,
+    "compress_limits": 0.0
+   }
+  },
+  "DE-HE": {
+   "roads": 309404,
+   "cameras": 853,
+   "limits_bytes": 3098531,
+   "seconds": {
+    "download": 27.7,
+    "roads": 100.9,
+    "cameras": 62.5,
+    "compress_limits": 0.9
+   }
+  },
+  "DE-HH": {
+   "roads": 39881,
+   "cameras": 36,
+   "limits_bytes": 338548,
+   "seconds": {
+    "download": 6.2,
+    "roads": 9.7,
+    "cameras": 6.1,
+    "compress_limits": 0.1
+   }
+  },
+  "DE-MV": {
+   "roads": 102005,
+   "cameras": 99,
+   "limits_bytes": 1224944,
+   "seconds": {
+    "download": 61.9,
+    "roads": 37.3,
+    "cameras": 24.1,
+    "compress_limits": 0.2
+   }
+  },
+  "DE-NI": {
+   "roads": 463496,
+   "cameras": 643,
+   "limits_bytes": 4939551,
+   "seconds": {
+    "download": 79.7,
+    "roads": 119.1,
+    "cameras": 69.5,
+    "compress_limits": 2.7
+   }
+  },
+  "DE-NW": {
+   "roads": 721701,
+   "cameras": 945,
+   "limits_bytes": 7242068,
+   "seconds": {
+    "download": 53.9,
+    "roads": 348.3,
+    "cameras": 220.9,
+    "compress_limits": 3.2
+   }
+  },
+  "DE-RP": {
+   "roads": 241312,
+   "cameras": 108,
+   "limits_bytes": 2626294,
+   "seconds": {
+    "download": 45.5,
+    "roads": 82.4,
+    "cameras": 51.3,
+    "compress_limits": 1.0
+   }
+  },
+  "DE-SH": {
+   "roads": 136681,
+   "cameras": 83,
+   "limits_bytes": 1632856,
+   "seconds": {
+    "download": 25.2,
+    "roads": 33.9,
+    "cameras": 20.2,
+    "compress_limits": 0.4
+   }
+  },
+  "DE-SL": {
+   "roads": 43568,
+   "cameras": 58,
+   "limits_bytes": 469696,
+   "seconds": {
+    "download": 183.6,
+    "roads": 11.8,
+    "cameras": 7.0,
+    "compress_limits": 0.1
+   }
+  },
+  "DE-SN": {
+   "roads": 219952,
+   "cameras": 270,
+   "limits_bytes": 2313288,
+   "seconds": {
+    "download": 40.4,
+    "roads": 76.6,
+    "cameras": 48.6,
+    "compress_limits": 0.5
+   }
+  },
+  "DE-ST": {
+   "roads": 163181,
+   "cameras": 67,
+   "limits_bytes": 1605098,
+   "seconds": {
+    "download": 12.4,
+    "roads": 43.6,
+    "cameras": 25.9,
+    "compress_limits": 0.6
+   }
+  },
+  "DE-TH": {
+   "roads": 138877,
+   "cameras": 86,
+   "limits_bytes": 1502630,
+   "seconds": {
+    "download": 17.1,
+    "roads": 49.6,
+    "cameras": 29.8,
+    "compress_limits": 0.5
+   }
+  },
+  "IT-21": {
+   "roads": 223893,
+   "cameras": 567,
+   "limits_bytes": 2808294,
+   "seconds": {
+    "download": 0.0,
+    "roads": 146.6,
+    "cameras": 95.8,
+    "compress_limits": 0.6
+   }
+  },
+  "IT-23": {
+   "roads": 11764,
+   "cameras": 25,
+   "limits_bytes": 172128,
+   "seconds": {
+    "download": 0.0,
+    "roads": 239.0,
+    "cameras": 177.3,
+    "compress_limits": 0.0
+   }
+  },
+  "IT-25": {
+   "roads": 413009,
+   "cameras": 854,
+   "limits_bytes": 4095320,
+   "seconds": {
+    "download": 0.0,
+    "roads": 274.3,
+    "cameras": 182.2,
+    "compress_limits": 2.0
+   }
+  },
+  "IT-34": {
+   "roads": 245195,
+   "cameras": 762,
+   "limits_bytes": 2778593,
+   "seconds": {
+    "download": 0.0,
+    "roads": 205.1,
+    "cameras": 132.9,
+    "compress_limits": 0.7
+   }
+  },
+  "IT-36": {
+   "roads": 79353,
+   "cameras": 194,
+   "limits_bytes": 889892,
+   "seconds": {
+    "download": 0.0,
+    "roads": 244.4,
+    "cameras": 175.6,
+    "compress_limits": 0.2
+   }
+  },
+  "IT-42": {
+   "roads": 59903,
+   "cameras": 122,
+   "limits_bytes": 899666,
+   "seconds": {
+    "download": 0.0,
+    "roads": 147.2,
+    "cameras": 100.5,
+    "compress_limits": 0.1
+   }
+  },
+  "IT-45": {
+   "roads": 211851,
+   "cameras": 620,
+   "limits_bytes": 2720790,
+   "seconds": {
+    "download": 0.0,
+    "roads": 769.2,
+    "cameras": 539.0,
+    "compress_limits": 0.5
+   }
+  },
+  "IT-52": {
+   "roads": 176441,
+   "cameras": 572,
+   "limits_bytes": 2327744,
+   "seconds": {
+    "download": 0.0,
+    "roads": 100.7,
+    "cameras": 67.5,
+    "compress_limits": 0.5
+   }
+  },
+  "IT-55": {
+   "roads": 52727,
+   "cameras": 164,
+   "limits_bytes": 810394,
+   "seconds": {
+    "download": 0.0,
+    "roads": 166.0,
+    "cameras": 120.3,
+    "compress_limits": 0.2
+   }
+  },
+  "IT-57": {
+   "roads": 89722,
+   "cameras": 183,
+   "limits_bytes": 1250554,
+   "seconds": {
+    "download": 0.0,
+    "roads": 167.6,
+    "cameras": 116.4,
+    "compress_limits": 0.3
+   }
+  },
+  "IT-62": {
+   "roads": 157964,
+   "cameras": 237,
+   "limits_bytes": 2045548,
+   "seconds": {
+    "download": 0.0,
+    "roads": 1093.9,
+    "cameras": 796.2,
+    "compress_limits": 0.5
+   }
+  },
+  "IT-65": {
+   "roads": 79264,
+   "cameras": 99,
+   "limits_bytes": 1155186,
+   "seconds": {
+    "download": 0.0,
+    "roads": 212.0,
+    "cameras": 157.5,
+    "compress_limits": 0.3
+   }
+  },
+  "IT-67": {
+   "roads": 21055,
+   "cameras": 5,
+   "limits_bytes": 410709,
+   "seconds": {
+    "download": 0.0,
+    "roads": 198.8,
+    "cameras": 147.7,
+    "compress_limits": 0.1
+   }
+  },
+  "IT-72": {
+   "roads": 137484,
+   "cameras": 153,
+   "limits_bytes": 1976327,
+   "seconds": {
+    "download": 0.0,
+    "roads": 218.2,
+    "cameras": 152.8,
+    "compress_limits": 0.7
+   }
+  },
+  "IT-75": {
+   "roads": 167659,
+   "cameras": 82,
+   "limits_bytes": 2004878,
+   "seconds": {
+    "download": 0.0,
+    "roads": 556.8,
+    "cameras": 393.4,
+    "compress_limits": 0.6
+   }
+  },
+  "IT-77": {
+   "roads": 39796,
+   "cameras": 11,
+   "limits_bytes": 773356,
+   "seconds": {
+    "download": 0.0,
+    "roads": 160.5,
+    "cameras": 115.4,
+    "compress_limits": 0.1
+   }
+  },
+  "IT-78": {
+   "roads": 92687,
+   "cameras": 41,
+   "limits_bytes": 1616268,
+   "seconds": {
+    "download": 0.0,
+    "roads": 210.1,
+    "cameras": 153.6,
+    "compress_limits": 0.4
+   }
+  },
+  "IT-82": {
+   "roads": 210184,
+   "cameras": 81,
+   "limits_bytes": 2781403,
+   "seconds": {
+    "download": 0.0,
+    "roads": 109.1,
+    "cameras": 66.9,
+    "compress_limits": 1.1
+   }
+  },
+  "IT-88": {
+   "roads": 120734,
+   "cameras": 29,
+   "limits_bytes": 1569057,
+   "seconds": {
+    "download": 0.0,
+    "roads": 78.1,
+    "cameras": 52.7,
+    "compress_limits": 0.3
    }
   },
   "IT-BZ": {
@@ -18,9 +414,20 @@
    "cameras": 152,
    "limits_bytes": 453640,
    "seconds": {
-    "download": 32.1,
-    "roads": 246.0,
-    "cameras": 182.4,
+    "download": 0.0,
+    "roads": 250.3,
+    "cameras": 188.7,
+    "compress_limits": 0.1
+   }
+  },
+  "IT-TN": {
+   "roads": 39899,
+   "cameras": 180,
+   "limits_bytes": 518734,
+   "seconds": {
+    "download": 0.0,
+    "roads": 196.1,
+    "cameras": 138.7,
     "compress_limits": 0.1
    }
   }
