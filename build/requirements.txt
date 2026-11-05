@@ -1,3 +1,4 @@
 osmium
 zstandard
 cryptography
+shapely

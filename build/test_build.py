@@ -1,7 +1,7 @@
 """Filter rules. Run: python -m unittest test_build (in this folder)."""
 import unittest
 
-from build import CELL_E6, build_cameras, camera_direction, camera_limit, cell_id, cut_into_cells, encode_cell, parse_limit, parse_outline, road_limits, simplify
+from build import CELL_E6, UNLIMITED, build_cameras, camera_direction, camera_limit, cell_id, cut_into_cells, default_byte, default_for, encode_cell, parse_limit, parse_outline, road_limits, side_from_tags, simplify
 
 
 class ParseLimit(unittest.TestCase):
@@ -26,6 +26,35 @@ class RoadLimits(unittest.TestCase):
     def test_zone_tags_are_the_fallback(self):
         self.assertEqual((30, 30), road_limits({"maxspeed": "sign", "zone:maxspeed": "DE:30"}))
         self.assertEqual((None, None), road_limits({}))
+
+
+    def test_no_limit_is_not_unknown(self):
+        self.assertEqual((UNLIMITED, UNLIMITED), road_limits({"maxspeed": "none", "source:maxspeed": "DE:rural"}))
+        self.assertEqual((UNLIMITED, 80), road_limits({"maxspeed": "none", "maxspeed:backward": "80"}))
+        self.assertEqual((None, None), road_limits({"maxspeed": "signals"}))
+
+
+class Defaults(unittest.TestCase):
+    RULES = {"urban": {"tertiary": 50}, "rural": {"tertiary": 100}}
+
+    def test_byte_values_do_not_touch_tagged_ones(self):
+        self.assertEqual(176, default_byte(50))
+        self.assertEqual(201, default_byte(100))
+        self.assertEqual(151 + 65, default_byte(130))
+
+    def test_only_listed_classes_and_only_real_gaps(self):
+        self.assertEqual(176, default_for(self.RULES, "tertiary", True, False))
+        self.assertEqual(201, default_for(self.RULES, "tertiary", False, False))
+        self.assertEqual(0, default_for(self.RULES, "unclassified", False, False))
+        self.assertEqual(0, default_for(self.RULES, "tertiary", False, True))
+        self.assertEqual(0, default_for({}, "tertiary", False, False))
+
+    def test_side_from_tags(self):
+        self.assertIs(True, side_from_tags("tertiary", {"zone:traffic": "DE:urban"}))
+        self.assertIs(False, side_from_tags("tertiary", {"zone:traffic": "DE:rural", "lit": "yes"}))
+        self.assertIs(True, side_from_tags("residential", {}))
+        self.assertIs(True, side_from_tags("tertiary", {"sidewalk": "both"}))
+        self.assertIsNone(side_from_tags("tertiary", {"sidewalk": "no", "lit": "no"}))
 
 
 class Cameras(unittest.TestCase):
@@ -70,6 +99,10 @@ class Cells(unittest.TestCase):
     def test_bytes_the_app_test_expects(self):
         data = encode_cell(2400, 550, [(50, None, [(48000000, 11000000), (48000100, 11000050)]), (None, 30, [(48010000, 11010000), (48010010, 11009990)])])
         self.assertEqual("023200020000140a001e02d00fd00f0201", data.hex())
+
+    def test_bytes_of_no_limit_and_default(self):
+        data = encode_cell(2400, 550, [(UNLIMITED, default_byte(100), [(48000000, 11000000), (48000100, 11000050)])])
+        self.assertEqual("01ffc902" + "0000140a", data.hex())
 
 
 class Outline(unittest.TestCase):

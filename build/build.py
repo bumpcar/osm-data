@@ -19,12 +19,14 @@ import urllib.request
 from collections import defaultdict
 from pathlib import Path
 
+import numpy
 import osmium
+import shapely
 import zstandard
 
 GEOFABRIK = "https://download.geofabrik.de/"
 USER_AGENT = "bumpcar-osm-packages"
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 TOLERANCE_M = 5.0
 OUTLINE_TOLERANCE_M = 2000.0
 CELL_E6 = 20_000  # 0.02 degrees
@@ -45,6 +47,22 @@ ZONES = {
     "DE:urban": 50, "DE:rural": 100,
     "CH:urban": 50, "CH:rural": 80, "CH:trunk": 100, "CH:motorway": 120,
 }
+# Limit bytes per direction: 0 unknown, 5..150 tagged km/h, 151..254 default km/h as 151 + km/h / 2, 255 no limit.
+UNLIMITED = 255
+DEFAULT_BASE = 151
+
+# km/h by country, side and road class where no limit is tagged. Other classes stay unknown.
+DEFAULTS = {
+    "DE": {
+        "urban": {"primary": 50, "secondary": 50, "tertiary": 50, "residential": 30},
+        "rural": {"primary": 100, "secondary": 100, "tertiary": 100},
+    },
+}
+SETTLEMENT = {"residential", "commercial", "retail", "industrial"}
+SIDEWALK_KEYS = ("sidewalk", "sidewalk:both", "sidewalk:left", "sidewalk:right")
+SIDEWALK_VALUES = {"both", "left", "right", "separate", "yes"}
+ALWAYS_URBAN = {"residential", "living_street"}
+SIGNED_KEYS = ("maxspeed", "maxspeed:forward", "maxspeed:backward", "maxspeed:conditional")
 NUMBER = re.compile(r"(\d{1,3})\s*(mph|km/h|kmh)?")
 ZONE_NUMBER = re.compile(r"[A-Z]{2}:(?:zone:?)?(\d{1,3})")
 COMPASS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
@@ -69,16 +87,45 @@ def parse_limit(value):
     return kmh if 5 <= kmh <= 150 else None
 
 
+def direction_limit(value):
+    return UNLIMITED if value is not None and value.strip() == "none" else parse_limit(value)
+
+
 def road_limits(tags):
-    """(forward km/h, backward km/h). Directions win; zone tags are the fallback."""
-    both = None
-    for key in ("maxspeed", "maxspeed:type", "source:maxspeed", "zone:maxspeed"):
-        both = parse_limit(tags.get(key))
-        if both is not None:
-            break
-    forward = parse_limit(tags.get("maxspeed:forward"))
-    backward = parse_limit(tags.get("maxspeed:backward"))
+    """(forward, backward): km/h, UNLIMITED or None. Directions win; zone tags are the fallback."""
+    both = direction_limit(tags.get("maxspeed"))
+    if both is None:
+        for key in ("maxspeed:type", "source:maxspeed", "zone:maxspeed"):
+            both = parse_limit(tags.get(key))
+            if both is not None:
+                break
+    forward = direction_limit(tags.get("maxspeed:forward"))
+    backward = direction_limit(tags.get("maxspeed:backward"))
     return (forward if forward is not None else both, backward if backward is not None else both)
+
+
+def default_byte(kmh):
+    return DEFAULT_BASE + (kmh + 1) // 2
+
+
+def side_from_tags(highway, tags):
+    """True urban, False rural, None when only the settlement areas can tell."""
+    zone = tags.get("zone:traffic", "")
+    if zone.endswith("urban"):
+        return True
+    if zone.endswith(("rural", "motorway", "motorroad")):
+        return False
+    if highway in ALWAYS_URBAN or tags.get("lit") == "yes":
+        return True
+    return True if any(tags.get(k) in SIDEWALK_VALUES for k in SIDEWALK_KEYS) else None
+
+
+def default_for(rules, highway, urban, signed):
+    """The default byte of a road, 0 without one. A value that could not be read is no gap to fill."""
+    if signed:
+        return 0
+    kmh = rules.get("urban" if urban else "rural", {}).get(highway)
+    return default_byte(kmh) if kmh else 0
 
 
 def camera_limit(value):
@@ -212,7 +259,7 @@ def write_varint(value, out):
 
 
 def encode_cell(lat_index, lon_index, pieces):
-    """pieces: (forward km/h or None, backward km/h or None, points). Differences from the cell corner."""
+    """pieces: (forward byte or None, backward byte or None, points). Differences from the cell corner."""
     out = bytearray()
     write_varint(len(pieces), out)
     origin_lat = lat_index * CELL_E6 // COORD_STEP
@@ -230,35 +277,93 @@ def encode_cell(lat_index, lon_index, pieces):
     return bytes(out)
 
 
-class RoadHandler(osmium.SimpleHandler):
+def inside_settlement(polygons, middles):
+    """Per way index with middles: does at least half of its middles lie in a settlement area?"""
+    if not middles or not polygons:
+        return {}
+    owners, xs, ys = [], [], []
+    for owner, points in middles.items():
+        for lat, lon in points:
+            owners.append(owner)
+            xs.append(lon)
+            ys.append(lat)
+    points = shapely.points(numpy.array(xs), numpy.array(ys))
+    hits = shapely.STRtree(shapely.from_wkb(polygons)).query(points, predicate="within")[0]
+    inside = numpy.zeros(len(points), dtype=bool)
+    inside[hits] = True
+    count = defaultdict(int)
+    for owner, is_inside in zip(owners, inside):
+        if is_inside:
+            count[owner] += 1
+    return {owner: count[owner] * 2 >= len(way) for owner, way in middles.items()}
+
+
+def empty_class():
+    return {"ways": 0, "km": 0.0, "ways_with_limit": 0, "km_with_limit": 0.0, "km_unlimited": 0.0, "km_default": 0.0}
+
+
+class Roads:
     def __init__(self):
-        super().__init__()
         self.cells = defaultdict(list)
         self.points_total = 0
         self.skipped = 0
-        self.by_class = defaultdict(lambda: {"ways": 0, "km": 0.0, "ways_with_limit": 0, "km_with_limit": 0.0})
+        self.by_class = defaultdict(empty_class)
 
-    def way(self, w):
-        highway = w.tags.get("highway")
-        if highway not in HIGHWAYS:
-            return
-        points = [(round(n.location.lat * 1e6), round(n.location.lon * 1e6)) for n in w.nodes if n.location.valid()]
+
+def read_roads(pbf, country):
+    """All drivable roads of an extract, cut into cells, with their limit bytes."""
+    rules = DEFAULTS.get(country, {})
+    classes = set(rules.get("urban", {})) | set(rules.get("rural", {}))
+    roads = Roads()
+    polygons, ways, middles = [], [], {}
+    wkb = osmium.geom.WKBFactory()
+    for o in osmium.FileProcessor(str(pbf)).with_locations().with_areas(osmium.filter.KeyFilter("landuse")):
+        if o.is_area():
+            if o.tags.get("landuse") in SETTLEMENT:
+                try:
+                    polygons.append(wkb.create_multipolygon(o))
+                except RuntimeError:
+                    pass
+            continue
+        if not o.is_way() or o.tags.get("highway") not in HIGHWAYS:
+            continue
+        highway = o.tags.get("highway")
+        points = [(round(n.location.lat * 1e6), round(n.location.lon * 1e6)) for n in o.nodes if n.location.valid()]
         if len(points) < 2:
-            self.skipped += 1
-            return
-        tags = {t.k: t.v for t in w.tags if "maxspeed" in t.k}
+            roads.skipped += 1
+            continue
+        tags = {t.k: t.v for t in o.tags}
         forward, backward = road_limits(tags)
+        signed = any(k in tags for k in SIGNED_KEYS)
+        side = None
+        if highway in classes and not signed and (forward is None or backward is None):
+            side = side_from_tags(highway, tags)
+            if side is None:
+                middles[len(ways)] = [((a[0] + b[0]) / 2e6, (a[1] + b[1]) / 2e6) for a, b in zip(points, points[1:])]
         km = length_km([value for point in points for value in point])
-        simple = simplify(points)
-        self.points_total += len(simple)
+        ways.append((highway, forward, backward, signed, side, km, simplify(points)))
+
+    urban_by_area = inside_settlement(polygons, middles)
+    del polygons, middles
+    for i, (highway, forward, backward, signed, side, km, simple) in enumerate(ways):
+        urban = urban_by_area.get(i, False) if side is None else side
+        fill = default_for(rules, highway, urban, signed)
+        forward_byte = forward if forward is not None else fill
+        backward_byte = backward if backward is not None else fill
+        roads.points_total += len(simple)
         for key, pieces in cut_into_cells(simple).items():
-            self.cells[key].extend((forward, backward, piece) for piece in pieces)
-        c = self.by_class[highway]
+            roads.cells[key].extend((forward_byte, backward_byte, piece) for piece in pieces)
+        c = roads.by_class[highway]
         c["ways"] += 1
         c["km"] += km
-        if forward is not None or backward is not None:
+        if any(v is not None and v != UNLIMITED for v in (forward, backward)):
             c["ways_with_limit"] += 1
             c["km_with_limit"] += km
+        elif UNLIMITED in (forward, backward):
+            c["km_unlimited"] += km
+        elif fill:
+            c["km_default"] += km
+    return roads
 
 
 class RelationHandler(osmium.SimpleHandler):
@@ -421,8 +526,7 @@ def main():
     t = time.monotonic()
     road_path = args.out / f"{args.region}.limits.sqlite"
     db = new_database(road_path, ROAD_SCHEMA, {**meta, "layer": "limits"})
-    roads = RoadHandler()
-    roads.apply_file(str(pbf), locations=True, idx="flex_mem")
+    roads = read_roads(pbf, region["country"])
     db.executemany("INSERT INTO cell VALUES (?, ?)", ((cell_id(la, lo), encode_cell(la, lo, pieces)) for (la, lo), pieces in roads.cells.items()))
     db.executemany("INSERT INTO meta VALUES (?, ?)", [
         ("cell_e6", str(CELL_E6)),
@@ -458,13 +562,18 @@ def main():
         "ways_with_limit": sum(c["ways_with_limit"] for c in roads.by_class.values()),
         "km": round(sum(c["km"] for c in roads.by_class.values())),
         "km_with_limit": round(sum(c["km_with_limit"] for c in roads.by_class.values())),
-        "by_class": {k: {"ways": v["ways"], "km": round(v["km"]), "ways_with_limit": v["ways_with_limit"], "km_with_limit": round(v["km_with_limit"])}
+        "km_unlimited": round(sum(c["km_unlimited"] for c in roads.by_class.values())),
+        "km_default": round(sum(c["km_default"] for c in roads.by_class.values())),
+        "by_class": {k: {"ways": v["ways"], "km": round(v["km"]), "ways_with_limit": v["ways_with_limit"], "km_with_limit": round(v["km_with_limit"]),
+                         "km_unlimited": round(v["km_unlimited"]), "km_default": round(v["km_default"])}
                      for k, v in sorted(roads.by_class.items())},
     }
     report["cameras"] = {"cameras": len(cameras), "sections": len(sections), "enforcement_relations": len(relations.relations)}
 
     if road_count < region["min_roads"] or len(cameras) < region["min_cameras"]:
         sys.exit(f"self test failed: {road_count} roads, {len(cameras)} cameras")
+    if region["country"] in DEFAULTS and not report["roads"]["km_default"]:
+        sys.exit("self test failed: no default limits")
 
     t = time.monotonic()
     report["limits"] = compress(road_path)
