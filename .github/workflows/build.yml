@@ -77,12 +77,14 @@ jobs:
           retention-days: 3
 
   release:
-    needs: build
+    needs: [regions, build]
+    if: ${{ !cancelled() && needs.regions.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -93,10 +95,12 @@ jobs:
         with:
           path: release/
           merge-multiple: true
+      - name: Keep last month's files for failed regions
+        run: python build/carry_over.py release
       - name: Sign
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-        run: python build/sign.py release
+        run: python build/sign.py release --previous previous-index.json
       - name: Verify
         run: python build/verify.py release
       - name: Publish
@@ -104,9 +108,32 @@ jobs:
           tag="data-$(date -u +%Y-%m-%d)-r${GITHUB_RUN_NUMBER}"
           data_date="$(python3 -c "import json;print(json.load(open('release/index.json'))['data_date'][:10])")"
           cp LICENSE-ODbL.txt README.md release/
-          gh release create "$tag" --latest --title "$data_date" \
-            --notes "© OpenStreetMap contributors, ODbL 1.0" \
-            release/*.zst release/index.json release/index.json.sig release/LICENSE-ODbL.txt release/README.md
+          for attempt in 1 2 3; do
+            if gh release create "$tag" --latest --title "$data_date" \
+                --notes "© OpenStreetMap contributors, ODbL 1.0" \
+                release/*.zst release/index.json release/index.json.sig release/LICENSE-ODbL.txt release/README.md; then
+              python build/verify.py "https://github.com/${GITHUB_REPOSITORY}/releases/download/$tag" > /dev/null && exit 0
+            fi
+            echo "attempt $attempt failed"
+            gh release delete "$tag" --yes --cleanup-tag || true
+            sleep 120
+          done
+          exit 1
+      - name: Copy to R2
+        if: ${{ env.R2_BUCKET != '' }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        run: |
+          aws s3 sync release/ "s3://$R2_BUCKET/" --endpoint-url "$R2_ENDPOINT" --delete \
+            --exclude "index.json" --exclude "index.json.sig" --exclude "*.report.json" --exclude "build-status.json"
+          aws s3 cp release/index.json "s3://$R2_BUCKET/index.json" --endpoint-url "$R2_ENDPOINT"
+          aws s3 cp release/index.json.sig "s3://$R2_BUCKET/index.json.sig" --endpoint-url "$R2_ENDPOINT"
+      - name: Count downloads
+        continue-on-error: true
+        run: python build/bandwidth.py "$GITHUB_REPOSITORY" status/bandwidth.json
       - name: Keep the last three releases
         run: |
           gh release list --limit 100 --json tagName,createdAt --jq 'sort_by(.createdAt) | reverse | .[3:] | .[].tagName' |
@@ -116,7 +143,13 @@ jobs:
           cp release/build-status.json status/last-build.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add status/last-build.json
+          git add status/
           git commit -m "Update status"
           git pull --rebase
           git push
+      - name: Report regions with old files
+        run: |
+          if [ -f carried-over.txt ]; then
+            echo "::error::Old files kept for: $(cat carried-over.txt). Rerun those regions."
+            exit 1
+          fi
