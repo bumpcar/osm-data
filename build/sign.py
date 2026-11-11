@@ -45,8 +45,8 @@ def main():
                 "file": entry["file"],
                 "bytes": entry["bytes"],
                 "sha256": entry["sha256"],
-                "schema_version": report["schema_version"],
-                "data_date": report["data_date"],
+                "schema_version": entry.get("schema_version", report.get("schema_version")),
+                "data_date": entry.get("data_date", report.get("data_date")),
                 "min_app_version": MIN_APP_VERSION,
             })
 
@@ -95,7 +95,7 @@ def main():
         "created": index["created"],
         "data_date": index["data_date"],
         "regions": {
-            r["region"]: {
+            r["region"]: {"kept": True} if r.get("kept") else {
                 "roads": r["roads"]["ways"],
                 "cameras": r["cameras"]["cameras"],
                 "limits_bytes": r["limits"]["bytes"],

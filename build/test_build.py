@@ -1,7 +1,21 @@
 """Filter rules. Run: python -m unittest test_build (in this folder)."""
+import base64
+import hashlib
+import json
+import sqlite3
+import subprocess
+import tempfile
 import unittest
+from datetime import datetime, timezone
+from pathlib import Path
 
 import shapely
+import zstandard
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+import check
+import publish
+import recall
 
 from build import DEFAULTS, CELL_E6, UNLIMITED, boundary_outline, build_cameras, camera_direction, cameras_inside, camera_limit, cell_id, cut_into_cells, default_byte, default_for, encode_cell, parse_limit, parse_outline, road_limits, side_from_tags, simplify, way_touches
 
@@ -152,6 +166,220 @@ class Outline(unittest.TestCase):
         text = "\n".join(["x", "1", " 10.0 50.0", " 10.5 50.0", " 11.0 50.0", " 11.0 51.0", " 10.0 50.0", "END",
                           "!2", " 10.2 50.2", " 10.3 50.2", " 10.2 50.2", "END", "END"])
         self.assertEqual([[50.0, 10.0, 50.0, 11.0, 51.0, 11.0, 50.0, 10.0]], parse_outline(text))
+
+
+def limits_pack(path, pieces):
+    database = Path(str(path) + ".tmp")
+    db = sqlite3.connect(database)
+    db.execute("CREATE TABLE cell (id INTEGER PRIMARY KEY NOT NULL, data BLOB NOT NULL)")
+    db.execute("INSERT INTO cell VALUES (1, ?)", (encode_cell(0, 0, pieces),))
+    db.commit()
+    db.close()
+    Path(path).write_bytes(zstandard.ZstdCompressor().compress(database.read_bytes()))
+    database.unlink()
+
+
+ROAD = [(0, 0), (100, 100)]
+
+
+class Stats(unittest.TestCase):
+    def test_buckets(self):
+        self.assertEqual("none", check.limit_bucket(0))
+        self.assertEqual("50", check.limit_bucket(50))
+        self.assertEqual("unlimited", check.limit_bucket(UNLIMITED))
+        self.assertEqual("default 100", check.limit_bucket(default_byte(100)))
+
+    def test_cell_is_read_like_it_was_written(self):
+        counts = {}
+        far = 5_000_000
+        check.cell_counts(encode_cell(0, 0, [(50, None, [(far, far), (far + 100, far)]), (UNLIMITED, 30, [(far, far)])]), counts)
+        self.assertEqual({"50": 1, "none": 1, "unlimited": 1, "30": 1}, counts)
+
+    def test_stats_of_a_file(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "a.zst"
+            limits_pack(path, [(50, 30, ROAD)])
+            stats = check.limits_stats(path)
+            self.assertEqual(2, stats["directions"])
+            self.assertEqual({"50": 1, "30": 1}, stats["limits"])
+
+
+class Compare(unittest.TestCase):
+    OLD = {"bytes": 1000, "directions": 1000, "limits": {"none": 500, "50": 300, "100": 200}}
+
+    def test_normal_month_passes(self):
+        new = {"bytes": 1020, "directions": 1010, "limits": {"none": 500, "50": 310, "100": 200}}
+        self.assertEqual([], check.compare_limits(new, self.OLD))
+
+    def test_half_the_roads_are_gone(self):
+        new = {"bytes": 1000, "directions": 500, "limits": {"none": 250, "50": 150, "100": 100}}
+        self.assertTrue(check.compare_limits(new, self.OLD))
+
+    def test_size_alone_stops_it(self):
+        new = {**self.OLD, "bytes": 800}
+        self.assertEqual(1, len(check.compare_limits(new, self.OLD)))
+
+    def test_limits_moved_at_the_same_size(self):
+        new = {"bytes": 1000, "directions": 1000, "limits": {"none": 500, "50": 200, "100": 300}}
+        self.assertEqual(2, len(check.compare_limits(new, self.OLD)))
+
+    def test_cameras_small_numbers_are_noise(self):
+        self.assertEqual([], check.compare_cameras({"cameras": 8, "sections": 0}, {"cameras": 3, "sections": 0}))
+        self.assertEqual([], check.compare_cameras({"cameras": 1100, "sections": 2}, {"cameras": 1000, "sections": 2}))
+        self.assertTrue(check.compare_cameras({"cameras": 500, "sections": 2}, {"cameras": 1000, "sections": 2}))
+
+    def test_accept(self):
+        self.assertIsNone(check.parse_accept("all"))
+        self.assertEqual(set(), check.parse_accept(""))
+        self.assertEqual({"AT", "DE-BY"}, check.parse_accept(" AT, DE-BY"))
+
+
+class Hold(unittest.TestCase):
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+        self.new = self.root / "new"
+        self.old = self.root / "old"
+        self.new.mkdir()
+        self.old.mkdir()
+
+    def entry(self, name, data, layer="limits"):
+        return {"region": "AT", "layer": layer, "file": name, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(),
+                "data_date": "2026-10-01T00:00:00Z", "schema_version": 3}
+
+    def run_check(self, new_pieces, accept=frozenset(), recalls=None):
+        name = "AT.limits.sqlite.zst"
+        limits_pack(self.old / name, [(50, 50, ROAD)] * 100)
+        limits_pack(self.new / name, new_pieces)
+        old = self.entry(name, (self.old / name).read_bytes())
+        new_bytes = (self.new / name).read_bytes()
+        report = {"region": "AT", "schema_version": 3, "data_date": "2026-11-01T00:00:00Z", "limits": {"file": name, "bytes": len(new_bytes)}, "cameras_file": {"file": "x"}}
+        path = self.new / "AT.report.json"
+        path.write_text(json.dumps(report))
+        held = {}
+        check.check_built(self.new, str(self.old), {("AT", "limits"): old}, recalls or recall.empty(), {"AT": (path, report)}, accept, held)
+        return held, report, old, new_bytes
+
+    def test_broken_package_goes_back_to_the_old_one(self):
+        held, report, old, _ = self.run_check([(50, 50, ROAD)] * 10)
+        self.assertIn("AT limits", held)
+        self.assertEqual(old["sha256"], report["limits"]["sha256"])
+        self.assertEqual(old["data_date"], report["limits"]["data_date"])
+        self.assertEqual((self.old / old["file"]).read_bytes(), (self.new / old["file"]).read_bytes())
+
+    def test_accept_lets_it_through(self):
+        for accept in (None, {"AT"}):
+            held, _, _, new_bytes = self.run_check([(50, 50, ROAD)] * 10, accept)
+            self.assertEqual({}, held)
+            self.assertEqual(new_bytes, (self.new / "AT.limits.sqlite.zst").read_bytes())
+
+    def test_recalled_package_is_no_measure(self):
+        recalls = {"recalls": [{"region": "AT", "layer": "limits", "valid_from": "2026-10-02"}]}
+        held, _, _, _ = self.run_check([(50, 50, ROAD)] * 10, recalls=recalls)
+        self.assertEqual({}, held)
+
+    def test_failed_region_keeps_its_packages(self):
+        cameras = self.entry("AT.cameras.sqlite.zst", b"c", "cameras")
+        limits = self.entry("AT.limits.sqlite.zst", b"l")
+        (self.old / cameras["file"]).write_bytes(b"c")
+        (self.old / limits["file"]).write_bytes(b"l")
+        previous = {("AT", "limits"): limits, ("AT", "cameras"): cameras}
+        held = {}
+        index = {"regions": [{"code": "AT", "outline": [[1.0, 2.0]]}]}
+        check.keep_unbuilt(self.new, str(self.old), index, previous, {}, held)
+        self.assertEqual(["no new build"], held["AT"])
+        report = json.loads((self.new / "AT.report.json").read_text(encoding="utf-8"))
+        self.assertEqual(limits["sha256"], report["limits"]["sha256"])
+        self.assertEqual([[1.0, 2.0]], report["outline"])
+        self.assertEqual(b"c", (self.new / cameras["file"]).read_bytes())
+
+
+class Publish(unittest.TestCase):
+    def test_tag_does_not_depend_on_the_day_of_the_run(self):
+        self.assertEqual("data-2026-11-04-r14", publish.release_tag("2026-11-04T21:21:03Z", "14"))
+        self.assertEqual("data-2026-11-03-r14", publish.existing_tag([{"tagName": "data-2026-11-03-r14"}, {"tagName": "data-2026-11-03-r114"}], "14"))
+        self.assertIsNone(publish.existing_tag([{"tagName": "data-2026-11-03-r114"}], "14"))
+
+    def files(self, folder, *names):
+        result = []
+        for name in names:
+            path = Path(folder) / name
+            path.write_bytes(b"12345")
+            result.append(path)
+        return result
+
+    def test_missing(self):
+        with tempfile.TemporaryDirectory() as folder:
+            a, b, c, d = self.files(folder, "a", "b", "c", "d")
+            assets = [{"name": "a", "size": 5, "state": "uploaded"}, {"name": "b", "size": 4, "state": "uploaded"}, {"name": "c", "size": 5, "state": "starter"}]
+            self.assertEqual([b, c, d], publish.missing([a, b, c, d], assets))
+
+    def test_upload_retries_only_what_is_missing(self):
+        with tempfile.TemporaryDirectory() as folder:
+            a, b = self.files(folder, "a", "b")
+            there, calls, waits = [], [], []
+
+            def send(todo):
+                calls.append([f.name for f in todo])
+                there.append({"name": todo[0].name, "size": 5})
+                if len(calls) == 1:
+                    raise subprocess.CalledProcessError(1, "gh", stderr="ReleaseAsset.name already exists")
+
+            publish.upload("t", [a, b], assets=lambda tag: there, send=send, sleep=waits.append)
+            self.assertEqual([["a", "b"], ["b"]], calls)
+            self.assertEqual([30], waits)
+
+    def test_upload_gives_up(self):
+        with tempfile.TemporaryDirectory() as folder:
+            a = self.files(folder, "a")[0]
+
+            def send(todo):
+                raise subprocess.CalledProcessError(1, "gh", stderr="no")
+
+            waits = []
+            with self.assertRaises(SystemExit):
+                publish.upload("t", [a], assets=lambda tag: [], send=send, sleep=waits.append)
+            self.assertEqual([30, 60, 90, 120], waits)
+
+
+class Recall(unittest.TestCase):
+    NOW = datetime(2026, 11, 6, 12, 0, 0, tzinfo=timezone.utc)
+
+    def test_add_replaces_the_same_package(self):
+        one = recall.added(recall.empty(), "AT", "limits", "2026-11-04", self.NOW)
+        two = recall.added(one, "AT", "limits", "2026-11-05", self.NOW)
+        self.assertEqual([{"region": "AT", "layer": "limits", "valid_from": "2026-11-05"}], two["recalls"])
+        self.assertGreater(two["issued"], one["issued"])
+
+    def test_remove_gets_a_newer_date(self):
+        one = recall.added(recall.empty(), "AT", "limits", "2026-11-04", self.NOW)
+        two = recall.removed(one, "AT", "limits", self.NOW)
+        self.assertEqual([], two["recalls"])
+        self.assertEqual("2026-11-06T12:00:01Z", two["issued"])
+
+    def test_wrong_input_stops(self):
+        for region, layer, date in [("XX", "limits", "2026-11-04"), ("AT", "roads", "2026-11-04"), ("AT", "limits", "tomorrow")]:
+            with self.assertRaises(SystemExit):
+                recall.added(recall.empty(), region, layer, date, self.NOW)
+        with self.assertRaises(SystemExit):
+            recall.removed(recall.empty(), "AT", "limits", self.NOW)
+
+    def test_older_data_is_recalled(self):
+        recalls = recall.added(recall.empty(), "AT", "limits", "2026-11-04", self.NOW)
+        self.assertTrue(recall.is_recalled(recalls, "AT", "limits", "2026-11-03T21:00:00Z"))
+        self.assertFalse(recall.is_recalled(recalls, "AT", "limits", "2026-11-04T21:00:00Z"))
+        self.assertFalse(recall.is_recalled(recalls, "AT", "cameras", "2026-11-03T21:00:00Z"))
+        self.assertFalse(recall.is_recalled(recalls, "CH", "limits", "2026-11-03T21:00:00Z"))
+
+    def test_signature(self):
+        key = Ed25519PrivateKey.generate()
+        data = recall.sign(recall.added(recall.empty(), "AT", "limits", "2026-11-04", self.NOW), key)
+        self.assertEqual("AT", recall.parse(data, key.public_key())["recalls"][0]["region"])
+        self.assertIsNone(recall.parse(data.replace(b"AT", b"CH"), key.public_key()))
+        self.assertIsNone(recall.parse(b"garbage", key.public_key()))
+        self.assertLess(len(data), 1024)
+        self.assertEqual(64, len(base64.b64decode(data.split(b"\n")[0])))
 
 
 if __name__ == "__main__":

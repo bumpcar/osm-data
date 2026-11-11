@@ -21,16 +21,21 @@ def read(base, name):
     return (Path(base) / name).read_bytes()
 
 
-def main():
-    base = sys.argv[1].rstrip("/")
+def fetch_signed_index(base):
     key = Ed25519PublicKey.from_public_bytes(base64.b64decode(PUBLIC_KEY.read_text().strip()))
     index = read(base, "index.json")
     try:
         key.verify(read(base, "index.json.sig"), index)
     except InvalidSignature:
         sys.exit("BAD SIGNATURE")
+    return json.loads(index)
+
+
+def main():
+    base = sys.argv[1].rstrip("/")
+    index = fetch_signed_index(base)
     print("signature ok")
-    for entry in json.loads(index)["files"]:
+    for entry in index["files"]:
         data = read(base, entry["file"])
         if hashlib.sha256(data).hexdigest() != entry["sha256"]:
             sys.exit(f"BAD CHECKSUM: {entry['file']}")

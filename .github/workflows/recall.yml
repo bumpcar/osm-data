@@ -1,0 +1,56 @@
+name: Recall
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        type: choice
+        options: [add, remove]
+      region:
+        type: string
+        required: true
+      layer:
+        type: choice
+        options: [limits, cameras]
+      valid_from:
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  recall:
+    runs-on: ubuntu-latest
+    concurrency: publish
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: pip install -r build/requirements.txt
+      - name: Sign
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          ACTION: ${{ inputs.action }}
+          REGION: ${{ inputs.region }}
+          LAYER: ${{ inputs.layer }}
+          VALID_FROM: ${{ inputs.valid_from }}
+        run: |
+          if [ "$ACTION" = add ]; then
+            python build/recall.py add "$REGION" "$LAYER" "$VALID_FROM" out
+          else
+            python build/recall.py remove "$REGION" "$LAYER" out
+          fi
+      - name: Publish
+        run: |
+          tag="$(gh release view --json tagName --jq .tagName)"
+          for i in 1 2 3 4 5; do
+            gh release upload "$tag" out/recalls.txt --clobber && break
+            [ "$i" = 5 ] && exit 1
+            sleep $((30 * i))
+          done
+      - name: Check
+        run: python build/recall.py confirm out

@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: "0 2 3 * *"
   workflow_dispatch:
+    inputs:
+      accept:
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -80,6 +84,7 @@ jobs:
     needs: [regions, build]
     if: ${{ !cancelled() && needs.regions.result == 'success' }}
     runs-on: ubuntu-latest
+    concurrency: publish
     permissions:
       contents: write
     env:
@@ -95,8 +100,12 @@ jobs:
         with:
           path: release/
           merge-multiple: true
-      - name: Keep last month's files for failed regions
-        run: python build/carry_over.py release
+      - name: Check
+        env:
+          ACCEPT: ${{ inputs.accept }}
+        run: python build/check.py release --accept "$ACCEPT"
+      - name: Keep recalls
+        run: python build/recall.py carry release
       - name: Sign
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
@@ -105,20 +114,8 @@ jobs:
         run: python build/verify.py release
       - name: Publish
         run: |
-          tag="data-$(date -u +%Y-%m-%d)-r${GITHUB_RUN_NUMBER}"
-          data_date="$(python3 -c "import json;print(json.load(open('release/index.json'))['data_date'][:10])")"
           cp LICENSE-ODbL.txt README.md release/
-          for attempt in 1 2 3; do
-            if gh release create "$tag" --latest --title "$data_date" \
-                --notes "© OpenStreetMap contributors, ODbL 1.0" \
-                release/*.zst release/index.json release/index.json.sig release/LICENSE-ODbL.txt release/README.md; then
-              python build/verify.py "https://github.com/${GITHUB_REPOSITORY}/releases/download/$tag" > /dev/null && exit 0
-            fi
-            echo "attempt $attempt failed"
-            gh release delete "$tag" --yes --cleanup-tag || true
-            sleep 120
-          done
-          exit 1
+          python build/publish.py release
       - name: Copy to R2
         if: ${{ env.R2_BUCKET != '' }}
         env:
@@ -136,8 +133,10 @@ jobs:
         run: python build/bandwidth.py "$GITHUB_REPOSITORY" status/bandwidth.json
       - name: Keep the last three releases
         run: |
-          gh release list --limit 100 --json tagName,createdAt --jq 'sort_by(.createdAt) | reverse | .[3:] | .[].tagName' |
+          gh release list --limit 100 --exclude-drafts --json tagName,publishedAt --jq 'sort_by(.publishedAt) | reverse | .[3:] | .[].tagName' |
             while read -r old; do gh release delete "$old" --yes --cleanup-tag; done
+          gh release list --limit 100 --json tagName,isDraft --jq '.[] | select(.isDraft) | .tagName' |
+            while read -r old; do gh release delete "$old" --yes; done
       - name: Record the build
         run: |
           cp release/build-status.json status/last-build.json
@@ -147,9 +146,5 @@ jobs:
           git commit -m "Update status"
           git pull --rebase
           git push
-      - name: Report regions with old files
-        run: |
-          if [ -f carried-over.txt ]; then
-            echo "::error::Old files kept for: $(cat carried-over.txt). Rerun those regions."
-            exit 1
-          fi
+      - name: Held packages
+        run: python3 -c "import json,sys;h=json.load(open('release/held.json'));print(json.dumps(h,indent=1));sys.exit(1 if h else 0)"
