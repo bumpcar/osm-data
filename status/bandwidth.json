@@ -1,0 +1,31 @@
+{
+ "releases": {
+  "data-2026-11-08-r15": {
+   "downloads": 0,
+   "bytes": 0,
+   "index_downloads": 0
+  },
+  "data-2026-11-05-r14": {
+   "downloads": 185,
+   "bytes": 202611667,
+   "index_downloads": 16
+  },
+  "data-2026-11-05-r12": {
+   "downloads": 216,
+   "bytes": 178531398,
+   "index_downloads": 9
+  },
+  "data-2026-11-05-r10": {
+   "downloads": 12,
+   "bytes": 9979414,
+   "index_downloads": 2
+  }
+ },
+ "runs": [
+  {
+   "date": "2026-11-11",
+   "total_bytes": 391122479,
+   "since_last_gb": 0.39
+  }
+ ]
+}
