@@ -3,7 +3,7 @@
 
     python build.py DE-BY [--input file.osm.pbf] [--out out] [--work work]
 
-Writes <region>.limits.sqlite.zst, <region>.cameras.sqlite.zst and <region>.report.json.
+Writes <region>.<layer>.sqlite.zst for limits, cameras, hazards, clearance and <region>.report.json.
 sign.py then creates the signed index.
 """
 import argparse
@@ -500,6 +500,208 @@ def build_cameras(relations, nodes):
     return cameras, sections
 
 
+HAZARD_SCHEMA = """
+CREATE TABLE hazard (
+    id TEXT PRIMARY KEY NOT NULL, lat REAL NOT NULL, lon REAL NOT NULL, kind TEXT NOT NULL,
+    direction REAL, value REAL
+);
+CREATE INDEX index_hazard_lat_lon ON hazard (lat, lon);
+"""
+
+CLEARANCE_SCHEMA = """
+CREATE TABLE clearance (
+    id TEXT PRIMARY KEY NOT NULL, lat REAL NOT NULL, lon REAL NOT NULL, direction REAL,
+    maxheight REAL, maxweight REAL, maxwidth REAL
+);
+CREATE INDEX index_clearance_lat_lon ON clearance (lat, lon);
+"""
+
+# hazard=* values and the kind the apps know. Other values are left out.
+HAZARD_VALUES = {
+    "animal_crossing": "animal", "deer": "animal", "cattle": "animal",
+    "school_zone": "school", "children": "school",
+    "curve": "curve", "curves": "curve", "turn": "curve", "turns": "curve",
+    "falling_rocks": "rocks", "slippery": "slippery", "ice": "slippery",
+    "dangerous_junction": "junction", "road_narrows": "narrow",
+}
+# Schools count only near roads where children cross, not near motorways.
+SCHOOL_ROADS = HIGHWAYS - {"motorway", "motorway_link", "trunk", "trunk_link"}
+NARROW_ROADS = HIGHWAYS - {"residential", "living_street"}
+SCHOOL_DISTANCE_DEG = 0.0006  # about 45 to 65 m
+STEEP_PERCENT = 10
+FEET = re.compile(r"(\d+)\s*'\s*(?:(\d+)\s*\")?")
+UNIT_NUMBER = re.compile(r"(\d+(?:[.,]\d+)?)\s*([a-z]*)")
+
+
+def parse_metres(value):
+    """Height or width in m from "3.5", "3,5 m", "11'6\""; None for "default", "none" and odd values."""
+    if value is None:
+        return None
+    v = value.strip().lower()
+    m = FEET.fullmatch(v)
+    if m:
+        metres = int(m.group(1)) * 0.3048 + int(m.group(2) or 0) * 0.0254
+    else:
+        m = UNIT_NUMBER.fullmatch(v)
+        if not m or m.group(2) not in ("", "m"):
+            return None
+        metres = float(m.group(1).replace(",", "."))
+    return round(metres, 2) if 1.0 <= metres <= 10.0 else None
+
+
+def parse_tonnes(value):
+    """Weight in t from "7.5", "7.5 t", "3500 kg", "12000 lbs"; None for odd values."""
+    if value is None:
+        return None
+    m = UNIT_NUMBER.fullmatch(value.strip().lower())
+    if not m:
+        return None
+    number = float(m.group(1).replace(",", "."))
+    factor = {"": 1.0, "t": 1.0, "kg": 0.001, "lbs": 0.000453592, "st": 0.907185}.get(m.group(2))
+    if factor is None:
+        return None
+    tonnes = number * factor
+    return round(tonnes, 2) if 0.5 <= tonnes <= 100 else None
+
+
+def parse_incline(value):
+    """Percent, uphill positive; None for "up", "down" and odd values."""
+    if value is None:
+        return None
+    v = value.strip().lower().replace(",", ".")
+    m = re.fullmatch(r"(-?\d+(?:\.\d+)?)\s*(%|°)?", v)
+    if not m:
+        return None
+    number = float(m.group(1))
+    if m.group(2) == "°":
+        number = math.tan(math.radians(number)) * 100
+    return number if abs(number) <= 40 else None
+
+
+def clearance_values(tags):
+    """(height m, weight t, width m), each None when not tagged or not readable."""
+    height = parse_metres(tags.get("maxheight")) or parse_metres(tags.get("maxheight:physical"))
+    width = parse_metres(tags.get("maxwidth")) or parse_metres(tags.get("maxwidth:physical"))
+    return height, parse_tonnes(tags.get("maxweight")), width
+
+
+def way_ends(way_id, tags, points):
+    """Where a car enters the way: (id, lat, lon, direction into the way). One-way roads only at the start.
+    points in micro degrees."""
+    (a, b), (y, z) = points[:2], points[-2:]
+    start = (f"osm:w{way_id}:s", a[0] / 1e6, a[1] / 1e6, bearing(a[0] / 1e6, a[1] / 1e6, b[0] / 1e6, b[1] / 1e6))
+    end = (f"osm:w{way_id}:e", z[0] / 1e6, z[1] / 1e6, bearing(z[0] / 1e6, z[1] / 1e6, y[0] / 1e6, y[1] / 1e6))
+    oneway = tags.get("oneway")
+    if oneway in ("yes", "true", "1") or tags.get("highway") in ("motorway", "motorway_link") and oneway != "no":
+        return [start]
+    if oneway == "-1":
+        return [end]
+    return [start, end]
+
+
+def steep_spots(way_id, tags, points):
+    """The top of a steep way, pointing downhill: (id, lat, lon, direction, percent)."""
+    incline = parse_incline(tags.get("incline"))
+    if incline is None or abs(incline) < STEEP_PERCENT:
+        return []
+    ends = {e[0][-1]: e for e in way_ends(way_id, tags, points)}
+    # Going downhill means entering at the start of a way that falls, or at the end of one that rises.
+    top = ends.get("s" if incline < 0 else "e")
+    return [(*top, round(abs(incline), 1))] if top else []
+
+
+class Hazards:
+    def __init__(self):
+        self.hazards = []
+        self.clearances = []
+        self.skipped = 0
+
+
+def node_hazard(tags):
+    """The kind of a hazard or level crossing node, None for others."""
+    if tags.get("railway") == "level_crossing":
+        return "rail"
+    return HAZARD_VALUES.get(tags.get("hazard"))
+
+
+def read_hazards(pbf, boundary=None):
+    """Hazards and clearances of an extract, or those inside boundary."""
+    result = Hazards()
+    rail, gates, schools, nodes_on_road = {}, {}, [], set()
+    road_coords, road_index, road_count = [], [], 0
+    wkb = osmium.geom.WKBFactory()
+    school_filter = osmium.filter.TagFilter(("amenity", "school"), ("amenity", "kindergarten"))
+    # The key filter runs after the location and area handlers: untagged nodes still give ways their points.
+    keys = osmium.filter.KeyFilter("highway", "railway", "hazard", "amenity", "maxheight", "maxheight:physical", "maxwidth", "maxweight")
+    for o in osmium.FileProcessor(str(pbf)).with_locations().with_areas(school_filter).with_filter(keys):
+        if o.is_node():
+            if not o.location.valid():
+                continue
+            tags = o.tags
+            lat, lon = o.location.lat, o.location.lon
+            kind = node_hazard(tags)
+            if kind == "rail":
+                rail[o.id] = (lat, lon)
+            elif kind:
+                result.hazards.append((f"osm:n{o.id}", lat, lon, kind, camera_direction(tags.get("direction")), None))
+            if tags.get("amenity") in ("school", "kindergarten"):
+                schools.append((f"osm:n{o.id}", lat, lon))
+            if any(k in tags for k in ("maxheight", "maxheight:physical", "maxwidth", "maxweight")):
+                height, weight, width = clearance_values({t.k: t.v for t in tags})
+                if height or weight or width:
+                    gates[o.id] = (f"osm:n{o.id}", lat, lon, camera_direction(tags.get("direction")), height, weight, width)
+        elif o.is_area():
+            if o.tags.get("amenity") in ("school", "kindergarten"):
+                try:
+                    centre = shapely.centroid(shapely.from_wkb(wkb.create_multipolygon(o)))
+                    schools.append((f"osm:a{o.id}", centre.y, centre.x))
+                except RuntimeError:
+                    pass
+        elif o.is_way():
+            highway = o.tags.get("highway")
+            if highway not in HIGHWAYS:
+                continue
+            points = []
+            for n in o.nodes:
+                if n.ref in rail or n.ref in gates:
+                    nodes_on_road.add(n.ref)
+                if n.location.valid():
+                    points.append((round(n.location.lat * 1e6), round(n.location.lon * 1e6)))
+            if len(points) < 2:
+                result.skipped += 1
+                continue
+            tags = {t.k: t.v for t in o.tags}
+            if highway in SCHOOL_ROADS:
+                road_coords.extend((p[1] / 1e6, p[0] / 1e6) for p in points)
+                road_index.extend([road_count] * len(points))
+                road_count += 1
+            height, weight, width = clearance_values(tags)
+            if height or weight or width:
+                result.clearances.extend((*end, height, weight, width) for end in way_ends(o.id, tags, points))
+            result.hazards.extend((i, lat, lon, "steep", d, value) for i, lat, lon, d, value in steep_spots(o.id, tags, points))
+            if tags.get("narrow") == "yes" and highway in NARROW_ROADS:
+                result.hazards.extend((i, lat, lon, "narrow", d, None) for i, lat, lon, d in way_ends(o.id, tags, points))
+    # A level crossing of a field track or railway yard is no warning for a car.
+    result.hazards.extend((f"osm:n{i}", lat, lon, "rail", None, None) for i, (lat, lon) in rail.items() if i in nodes_on_road)
+    # Same for a bollard or barrier on a footpath.
+    result.clearances.extend(gate for i, gate in gates.items() if i in nodes_on_road)
+    result.hazards.extend(near_roads(schools, road_coords, road_index))
+    if boundary is not None:
+        result.hazards = [h for h in result.hazards if shapely.contains_xy(boundary, h[2], h[1])]
+        result.clearances = [c for c in result.clearances if shapely.contains_xy(boundary, c[2], c[1])]
+    return result
+
+
+def near_roads(schools, road_coords, road_index):
+    """School hazards for schools within SCHOOL_DISTANCE_DEG of a road."""
+    if not schools or not road_coords:
+        return []
+    roads = shapely.linestrings(numpy.array(road_coords), indices=numpy.array(road_index))
+    points = shapely.points(numpy.array([s[2] for s in schools]), numpy.array([s[1] for s in schools]))
+    near = set(shapely.STRtree(roads).query(points, predicate="dwithin", distance=SCHOOL_DISTANCE_DEG)[0].tolist())
+    return [(school_id, lat, lon, "school", None, None) for i, (school_id, lat, lon) in enumerate(schools) if i in near]
+
+
 def parse_outline(text, tolerance_m=OUTLINE_TOLERANCE_M):
     """Geofabrik .poly to simplified rings of flat lat, lon values. Holes are left out."""
     rings, ring = [], None
@@ -624,6 +826,22 @@ def main():
     db.close()
     step("cameras", t)
 
+    t = time.monotonic()
+    found = read_hazards(pbf, boundary)
+    hazard_path = args.out / f"{args.region}.hazards.sqlite"
+    db = new_database(hazard_path, HAZARD_SCHEMA, {**meta, "layer": "hazards"})
+    db.executemany("INSERT OR IGNORE INTO hazard VALUES (?,?,?,?,?,?)", found.hazards)
+    db.commit()
+    db.execute("VACUUM")
+    db.close()
+    clearance_path = args.out / f"{args.region}.clearance.sqlite"
+    db = new_database(clearance_path, CLEARANCE_SCHEMA, {**meta, "layer": "clearance"})
+    db.executemany("INSERT OR IGNORE INTO clearance VALUES (?,?,?,?,?,?,?)", found.clearances)
+    db.commit()
+    db.execute("VACUUM")
+    db.close()
+    step("hazards", t)
+
     road_count = sum(c["ways"] for c in roads.by_class.values())
     report["roads"] = {
         "ways": road_count,
@@ -639,9 +857,17 @@ def main():
                      for k, v in sorted(roads.by_class.items())},
     }
     report["cameras"] = {"cameras": len(cameras), "sections": len(sections), "enforcement_relations": len(relations.relations)}
+    kinds = defaultdict(int)
+    for h in found.hazards:
+        kinds[h[3]] += 1
+    report["hazards"] = {"hazards": len(found.hazards), "by_kind": dict(sorted(kinds.items())), "clearances": len(found.clearances),
+                         "height": sum(1 for c in found.clearances if c[4]), "weight": sum(1 for c in found.clearances if c[5]),
+                         "width": sum(1 for c in found.clearances if c[6])}
 
     if road_count < region["min_roads"] or len(cameras) < region["min_cameras"]:
         sys.exit(f"self test failed: {road_count} roads, {len(cameras)} cameras")
+    if not found.hazards or not found.clearances:
+        sys.exit(f"self test failed: {len(found.hazards)} hazards, {len(found.clearances)} clearances")
     if region["country"] in DEFAULTS and not report["roads"]["km_default"]:
         sys.exit("self test failed: no default limits")
 
@@ -649,8 +875,10 @@ def main():
     report["limits"] = compress(road_path)
     step("compress_limits", t)
     report["cameras_file"] = compress(camera_path)
-    road_path.unlink()
-    camera_path.unlink()
+    report["hazards_file"] = compress(hazard_path)
+    report["clearance_file"] = compress(clearance_path)
+    for path in (road_path, camera_path, hazard_path, clearance_path):
+        path.unlink()
 
     report_path = args.out / f"{args.region}.report.json"
     report_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")

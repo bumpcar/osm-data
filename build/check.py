@@ -93,6 +93,26 @@ def cameras_stats(path):
     return {"cameras": cameras, "sections": sections}
 
 
+def hazards_stats(path):
+    with tempfile.TemporaryDirectory() as folder:
+        database = Path(folder) / "p.sqlite"
+        unpack(path, database)
+        db = sqlite3.connect(database)
+        counts = dict(db.execute("SELECT kind, COUNT(*) FROM hazard GROUP BY kind").fetchall())
+        db.close()
+    return counts
+
+
+def clearance_stats(path):
+    with tempfile.TemporaryDirectory() as folder:
+        database = Path(folder) / "p.sqlite"
+        unpack(path, database)
+        db = sqlite3.connect(database)
+        counts = {name: db.execute(f"SELECT COUNT({name}) FROM clearance").fetchone()[0] for name in ("maxheight", "maxweight", "maxwidth")}
+        db.close()
+    return counts
+
+
 def change(new, old):
     return abs(new - old) / old if old else (1.0 if new else 0.0)
 
@@ -121,6 +141,16 @@ def compare_cameras(new, old):
     return reasons
 
 
+def compare_counts(new, old):
+    """Point layers: one reason per kind whose count moved a lot. Same rule as the cameras."""
+    reasons = []
+    for name in sorted(set(new) | set(old)):
+        before, after = old.get(name, 0), new.get(name, 0)
+        if abs(after - before) > CAMERA_SLACK and change(after, before) > MAX_CAMERA_CHANGE:
+            reasons.append(f"{name} {before} -> {after}")
+    return reasons
+
+
 def parse_accept(text):
     """None: all regions."""
     text = (text or "").strip()
@@ -129,7 +159,10 @@ def parse_accept(text):
     return {part.strip() for part in text.split(",") if part.strip()}
 
 
-LAYERS = (("limits", "limits", limits_stats, compare_limits), ("cameras", "cameras_file", cameras_stats, compare_cameras))
+LAYERS = (("limits", "limits", limits_stats, compare_limits), ("cameras", "cameras_file", cameras_stats, compare_cameras),
+          ("hazards", "hazards_file", hazards_stats, compare_counts), ("clearance", "clearance_file", clearance_stats, compare_counts))
+# Layers older releases do not have yet: a kept region goes out without them.
+NEW_LAYERS = {"hazards", "clearance"}
 
 
 def fetch_old(base, entry, folder):
@@ -151,7 +184,7 @@ def check_built(folder, base, previous, recalls, reports, accept, held):
             changed = False
             for layer, key, stats, compare in LAYERS:
                 old = previous.get((region, layer))
-                if old is None or old["schema_version"] != report["schema_version"]:
+                if old is None or key not in report or old["schema_version"] != report["schema_version"]:
                     continue
                 # A recalled package is no measure: the repaired one is meant to differ from it.
                 if recall.is_recalled(recalls, region, layer, old["data_date"]):
@@ -183,6 +216,8 @@ def keep_unbuilt(folder, base, index, previous, reports, held):
         report = {"region": region, "outline": outlines.get(region, []), "kept": True}
         for layer, key, _, _ in LAYERS:
             old = previous.get((region, layer))
+            if old is None and layer in NEW_LAYERS:
+                continue
             if old is None:
                 sys.exit(f"{region}: {layer} missing in the last release")
             fetch_old(base, old, folder)

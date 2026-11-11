@@ -17,6 +17,7 @@ import check
 import publish
 import recall
 
+from build import clearance_values, near_roads, node_hazard, parse_incline, parse_metres, parse_tonnes, steep_spots, way_ends
 from build import DEFAULTS, CELL_E6, UNLIMITED, boundary_outline, build_cameras, camera_direction, cameras_inside, camera_limit, cell_id, cut_into_cells, default_byte, default_for, encode_cell, parse_limit, parse_outline, road_limits, side_from_tags, simplify, way_touches
 
 
@@ -136,6 +137,62 @@ class Cameras(unittest.TestCase):
         self.assertAlmostEqual(0.0, cameras[0][4])
 
 
+class Hazards(unittest.TestCase):
+    def test_kinds(self):
+        self.assertEqual("rail", node_hazard({"railway": "level_crossing"}))
+        self.assertEqual("animal", node_hazard({"hazard": "animal_crossing"}))
+        self.assertIsNone(node_hazard({"railway": "crossing"}))
+        self.assertIsNone(node_hazard({"hazard": "low_flying_aircraft"}))
+
+    def test_incline(self):
+        self.assertEqual(12.0, parse_incline("12%"))
+        self.assertEqual(-8.0, parse_incline("-8 %"))
+        self.assertAlmostEqual(17.6, parse_incline("10°"), places=1)
+        self.assertIsNone(parse_incline("up"))
+
+    def test_steep_spot_is_the_top_pointing_down(self):
+        points = [(48000000, 11000000), (48001000, 11000000)]
+        falling = steep_spots(5, {"incline": "-12%"}, points)
+        self.assertEqual([("osm:w5:s", 48.0, 11.0, 0.0, 12.0)], falling)
+        rising = steep_spots(5, {"incline": "12%"}, points)
+        self.assertEqual("osm:w5:e", rising[0][0])
+        self.assertAlmostEqual(180.0, rising[0][3])
+        self.assertEqual([], steep_spots(5, {"incline": "12%", "oneway": "yes"}, points))
+        self.assertEqual([], steep_spots(5, {"incline": "6%"}, points))
+
+    def test_one_way_is_entered_at_one_end(self):
+        points = [(48000000, 11000000), (48001000, 11000000)]
+        self.assertEqual(2, len(way_ends(1, {}, points)))
+        self.assertEqual(["osm:w1:s"], [e[0] for e in way_ends(1, {"oneway": "yes"}, points)])
+        self.assertEqual(["osm:w1:e"], [e[0] for e in way_ends(1, {"oneway": "-1"}, points)])
+        self.assertEqual(1, len(way_ends(1, {"highway": "motorway"}, points)))
+
+    def test_schools_only_near_roads(self):
+        road = [(11.0, 48.0), (11.01, 48.0)]
+        schools = [("osm:a1", 48.0003, 11.005), ("osm:a2", 48.01, 11.005)]
+        self.assertEqual(["osm:a1"], [h[0] for h in near_roads(schools, road, [0, 0])])
+
+
+class Clearance(unittest.TestCase):
+    def test_metres(self):
+        self.assertEqual(3.5, parse_metres("3.5"))
+        self.assertEqual(3.5, parse_metres("3,5 m"))
+        self.assertEqual(3.51, parse_metres("11'6\""))
+        self.assertIsNone(parse_metres("default"))
+        self.assertIsNone(parse_metres("none"))
+        self.assertIsNone(parse_metres("350"))
+
+    def test_tonnes(self):
+        self.assertEqual(7.5, parse_tonnes("7.5"))
+        self.assertEqual(3.5, parse_tonnes("3500 kg"))
+        self.assertEqual(12.0, parse_tonnes("12 t"))
+        self.assertIsNone(parse_tonnes("3 axles"))
+
+    def test_physical_height_is_the_fallback(self):
+        self.assertEqual((3.8, None, None), clearance_values({"maxheight": "default", "maxheight:physical": "3.8"}))
+        self.assertEqual((None, 7.5, 2.2), clearance_values({"maxweight": "7.5", "maxwidth": "2.2"}))
+
+
 class Cells(unittest.TestCase):
     def test_straight_points_go_and_bends_stay(self):
         points = [(48000000, 11000000), (48000100, 11000100), (48000200, 11000200)]
@@ -228,6 +285,10 @@ class Compare(unittest.TestCase):
         self.assertEqual([], check.compare_cameras({"cameras": 1100, "sections": 2}, {"cameras": 1000, "sections": 2}))
         self.assertTrue(check.compare_cameras({"cameras": 500, "sections": 2}, {"cameras": 1000, "sections": 2}))
 
+    def test_point_layers(self):
+        self.assertEqual([], check.compare_counts({"rail": 105, "school": 3}, {"rail": 100}))
+        self.assertEqual(["rail 1000 -> 500"], check.compare_counts({"rail": 500}, {"rail": 1000}))
+
     def test_accept(self):
         self.assertIsNone(check.parse_accept("all"))
         self.assertEqual(set(), check.parse_accept(""))
@@ -293,6 +354,7 @@ class Hold(unittest.TestCase):
         self.assertEqual(limits["sha256"], report["limits"]["sha256"])
         self.assertEqual([[1.0, 2.0]], report["outline"])
         self.assertEqual(b"c", (self.new / cameras["file"]).read_bytes())
+        self.assertNotIn("hazards_file", report)
 
 
 class Publish(unittest.TestCase):

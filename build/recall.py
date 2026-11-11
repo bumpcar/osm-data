@@ -25,7 +25,7 @@ REGIONS = json.loads((Path(__file__).resolve().parent.parent / "regions.json").r
 LATEST = "https://github.com/bumpcar/osm-data/releases/latest/download"
 FILE = "recalls.txt"
 FORMAT_VERSION = 1
-LAYERS = ("limits", "cameras")
+LAYERS = ("limits", "cameras", "hazards", "clearance")
 DATE = re.compile(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}Z)?$")
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
