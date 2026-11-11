@@ -37,10 +37,10 @@ def main():
 
     files = []
     for report in reports:
-        for layer, key in LAYERS:
-            if key not in report:
+        for layer, field in LAYERS:
+            if field not in report:
                 continue
-            entry = report[key]
+            entry = report[field]
             path = folder / entry["file"]
             if path.stat().st_size != entry["bytes"]:
                 sys.exit(f"wrong size: {path.name}")

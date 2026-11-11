@@ -2,6 +2,8 @@
 import base64
 import hashlib
 import json
+import sys
+import os
 import sqlite3
 import subprocess
 import tempfile
@@ -442,6 +444,26 @@ class Recall(unittest.TestCase):
         self.assertIsNone(recall.parse(b"garbage", key.public_key()))
         self.assertLess(len(data), 1024)
         self.assertEqual(64, len(base64.b64decode(data.split(b"\n")[0])))
+
+
+class Sign(unittest.TestCase):
+    def test_all_layers_are_signed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            report = {"region": "AT", "schema_version": 3, "data_date": "2026-11-01T00:00:00Z", "outline": [],
+                      "roads": {"ways": 1}, "cameras": {"cameras": 1}, "seconds": {}}
+            for layer, field in (("limits", "limits"), ("cameras", "cameras_file"), ("hazards", "hazards_file"), ("clearance", "clearance_file")):
+                data = layer.encode()
+                (folder / f"AT.{layer}.sqlite.zst").write_bytes(data)
+                report[field] = {"file": f"AT.{layer}.sqlite.zst", "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+            (folder / "AT.report.json").write_text(json.dumps(report))
+            seed = base64.b64encode(bytes(32)).decode()
+            run = subprocess.run([sys.executable, str(Path(__file__).parent / "sign.py"), str(folder)],
+                                 env={**os.environ, "SIGNING_KEY": seed}, capture_output=True, text=True)
+            self.assertEqual(0, run.returncode, run.stderr)
+            index = (folder / "index.json").read_bytes()
+            Ed25519PrivateKey.from_private_bytes(bytes(32)).public_key().verify((folder / "index.json.sig").read_bytes(), index)
+            self.assertEqual(["cameras", "clearance", "hazards", "limits"], sorted(f["layer"] for f in json.loads(index)["files"]))
 
 
 if __name__ == "__main__":
