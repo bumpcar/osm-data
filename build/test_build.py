@@ -15,6 +15,7 @@ import shapely
 import zstandard
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+import build
 import check
 import publish
 import recall
@@ -193,6 +194,36 @@ class Clearance(unittest.TestCase):
     def test_physical_height_is_the_fallback(self):
         self.assertEqual((3.8, None, None), clearance_values({"maxheight": "default", "maxheight:physical": "3.8"}))
         self.assertEqual((None, 7.5, 2.2), clearance_values({"maxweight": "7.5", "maxwidth": "2.2"}))
+
+
+class Places(unittest.TestCase):
+    def test_fuel(self):
+        row = build.place_row("osm:n1", 48.1, 11.5, {"amenity": "fuel", "brand": "Aral", "name": "Aral Nord",
+                                                   "fuel:diesel": "yes", "fuel:lpg": "yes", "fuel:octane_95": "yes", "opening_hours": "24/7"})
+        self.assertEqual(("osm:n1", 48.1, 11.5, "fuel", "Aral Nord", "Aral", "fuels=diesel,lpg,petrol;h24"), row)
+
+    def test_charging(self):
+        tags = {"amenity": "charging_station", "operator": "EnBW", "socket:type2_combo": "2", "socket:type2": "yes",
+                "socket:type2_combo:output": "150 kW", "capacity": "4"}
+        self.assertEqual("sockets=ccs:2,type2:1;kw=150;points=4", build.place_row("osm:n2", 1, 2, tags)[6])
+        self.assertEqual("EnBW", build.place_row("osm:n2", 1, 2, tags)[5])
+
+    def test_not_for_cars(self):
+        self.assertIsNone(build.place_kind({"amenity": "charging_station", "bicycle": "yes", "socket:schuko": "2"}))
+        self.assertIsNone(build.place_kind({"amenity": "fuel", "access": "private"}))
+        self.assertIsNone(build.place_kind({"amenity": "charging_station", "motorcar": "no"}))
+        self.assertEqual("charging", build.place_kind({"amenity": "charging_station", "bicycle": "yes", "socket:type2": "1"}))
+
+    def test_kw(self):
+        self.assertEqual(150, build.parse_kw("50 kW;150 kW"))
+        self.assertEqual(11, build.parse_kw("11000 W"))
+        self.assertIsNone(build.parse_kw("fast"))
+
+    def test_area_with_node_is_left_out(self):
+        nodes = [("osm:n1", 48.0, 11.0, "fuel", None, None, None)]
+        areas = [("osm:a2", 48.0002, 11.0002, "fuel", None, None, None), ("osm:a3", 48.1, 11.0, "fuel", None, None, None),
+                 ("osm:a4", 48.0001, 11.0, "charging", None, None, None)]
+        self.assertEqual(["osm:n1", "osm:a3", "osm:a4"], [p[0] for p in build.merge_places(nodes, areas)])
 
 
 class Cells(unittest.TestCase):
@@ -452,7 +483,7 @@ class Sign(unittest.TestCase):
             folder = Path(folder)
             report = {"region": "AT", "schema_version": 3, "data_date": "2026-11-01T00:00:00Z", "outline": [],
                       "roads": {"ways": 1}, "cameras": {"cameras": 1}, "seconds": {}}
-            for layer, field in (("limits", "limits"), ("cameras", "cameras_file"), ("hazards", "hazards_file"), ("clearance", "clearance_file")):
+            for layer, field in (("limits", "limits"), ("cameras", "cameras_file"), ("hazards", "hazards_file"), ("clearance", "clearance_file"), ("places", "places_file")):
                 data = layer.encode()
                 (folder / f"AT.{layer}.sqlite.zst").write_bytes(data)
                 report[field] = {"file": f"AT.{layer}.sqlite.zst", "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
@@ -463,7 +494,7 @@ class Sign(unittest.TestCase):
             self.assertEqual(0, run.returncode, run.stderr)
             index = (folder / "index.json").read_bytes()
             Ed25519PrivateKey.from_private_bytes(bytes(32)).public_key().verify((folder / "index.json.sig").read_bytes(), index)
-            self.assertEqual(["cameras", "clearance", "hazards", "limits"], sorted(f["layer"] for f in json.loads(index)["files"]))
+            self.assertEqual(["cameras", "clearance", "hazards", "limits", "places"], sorted(f["layer"] for f in json.loads(index)["files"]))
 
 
 if __name__ == "__main__":

@@ -15,8 +15,8 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 REGIONS = json.loads((Path(__file__).resolve().parent.parent / "regions.json").read_text(encoding="utf-8"))
 FORMAT_VERSION = 1
 MIN_APP_VERSION = 0
-# Layer and its entry in the report. hazards and clearance are missing in packages kept from before they existed.
-LAYERS = (("limits", "limits"), ("cameras", "cameras_file"), ("hazards", "hazards_file"), ("clearance", "clearance_file"))
+# Layer and its entry in the report. hazards, clearance and places are missing in packages kept from before they existed.
+LAYERS = (("limits", "limits"), ("cameras", "cameras_file"), ("hazards", "hazards_file"), ("clearance", "clearance_file"), ("places", "places_file"))
 
 
 def main():
@@ -105,6 +105,7 @@ def main():
                 "cameras": r["cameras"]["cameras"],
                 "hazards": r.get("hazards", {}).get("hazards"),
                 "clearances": r.get("hazards", {}).get("clearances"),
+                "places": r.get("places"),
                 "limits_bytes": r["limits"]["bytes"],
                 "seconds": r["seconds"],
             }

@@ -113,6 +113,16 @@ def clearance_stats(path):
     return counts
 
 
+def places_stats(path):
+    with tempfile.TemporaryDirectory() as folder:
+        database = Path(folder) / "p.sqlite"
+        unpack(path, database)
+        db = sqlite3.connect(database)
+        counts = dict(db.execute("SELECT kind, COUNT(*) FROM place GROUP BY kind").fetchall())
+        db.close()
+    return counts
+
+
 def change(new, old):
     return abs(new - old) / old if old else (1.0 if new else 0.0)
 
@@ -160,9 +170,10 @@ def parse_accept(text):
 
 
 LAYERS = (("limits", "limits", limits_stats, compare_limits), ("cameras", "cameras_file", cameras_stats, compare_cameras),
-          ("hazards", "hazards_file", hazards_stats, compare_counts), ("clearance", "clearance_file", clearance_stats, compare_counts))
+          ("hazards", "hazards_file", hazards_stats, compare_counts), ("clearance", "clearance_file", clearance_stats, compare_counts),
+          ("places", "places_file", places_stats, compare_counts))
 # Layers older releases do not have yet: a kept region goes out without them.
-NEW_LAYERS = {"hazards", "clearance"}
+NEW_LAYERS = {"hazards", "clearance", "places"}
 
 
 def fetch_old(base, entry, folder):

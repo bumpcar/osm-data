@@ -3,7 +3,7 @@
 
     python build.py DE-BY [--input file.osm.pbf] [--out out] [--work work]
 
-Writes <region>.<layer>.sqlite.zst for limits, cameras, hazards, clearance and <region>.report.json.
+Writes <region>.<layer>.sqlite.zst for limits, cameras, hazards, clearance, places and <region>.report.json.
 sign.py then creates the signed index.
 """
 import argparse
@@ -702,6 +702,158 @@ def near_roads(schools, road_coords, road_index):
     return [(school_id, lat, lon, "school", None, None) for i, (school_id, lat, lon) in enumerate(schools) if i in near]
 
 
+PLACE_SCHEMA = """
+CREATE TABLE place (
+    id TEXT PRIMARY KEY NOT NULL, lat REAL NOT NULL, lon REAL NOT NULL, kind TEXT NOT NULL,
+    name TEXT, brand TEXT, details TEXT
+);
+CREATE INDEX index_place_lat_lon ON place (lat, lon);
+"""
+
+# One file per region for all small point data the map shows; kind tells them apart. fuel and
+# charging come first (D4b), rest areas and parking later as further kinds in the same table.
+PLACE_TAGS = {"fuel": "fuel", "charging_station": "charging"}
+FUELS = {
+    "diesel": "diesel", "HGV_diesel": "diesel", "octane_95": "petrol", "octane_98": "petrol", "e10": "petrol",
+    "e5": "petrol", "lpg": "lpg", "cng": "cng", "lng": "lng", "adblue": "adblue", "e85": "e85",
+    "h2": "hydrogen", "hydrogen": "hydrogen",
+}
+# Socket keys and the short name in the package. Bike plugs are left out.
+SOCKETS = {
+    "type2": "type2", "type2_cable": "type2", "type2_combo": "ccs", "chademo": "chademo",
+    "type1": "type1", "type1_combo": "ccs1", "tesla_supercharger": "tesla", "tesla_destination": "tesla",
+    "nacs": "tesla", "schuko": "schuko", "cee_blue": "cee", "gb_dc": "gbdc",
+}
+CAR_SOCKETS = set(SOCKETS.values()) - {"schuko", "cee"}
+NO_ACCESS = {"private", "no"}
+KW = re.compile(r"(\d+(?:[.,]\d+)?)\s*(kw|w|kva)?", re.IGNORECASE)
+PLACE_MERGE_DEG = 0.0005  # about 35 to 55 m: an area and a node of the same station
+
+
+def parse_kw(value):
+    """Highest power in kW from "22 kW", "50kW;150 kW", "11000 W"."""
+    best = None
+    for number, unit in KW.findall(value or ""):
+        kw = float(number.replace(",", "."))
+        if (unit or "").lower() == "w":
+            kw /= 1000
+        if 1 <= kw <= 1000:
+            best = max(best or 0, kw)
+    return best
+
+
+def socket_count(value):
+    if value in ("yes", ""):
+        return 1
+    try:
+        return max(0, int(value))
+    except ValueError:
+        return 1 if value not in ("no", "0") else 0
+
+
+def place_details(kind, tags):
+    """Compact "key=value;key=value" text with what the map card shows."""
+    parts = []
+    if kind == "fuel":
+        fuels = sorted({name for key, name in FUELS.items() if tags.get(f"fuel:{key}") == "yes"})
+        if fuels:
+            parts.append("fuels=" + ",".join(fuels))
+    else:
+        sockets, power = {}, None
+        for key, value in tags.items():
+            if not key.startswith("socket:"):
+                continue
+            rest = key[7:]
+            name = SOCKETS.get(rest.split(":")[0])
+            if name is None:
+                continue
+            if ":" in rest:
+                if rest.endswith(":output"):
+                    kw = parse_kw(value)
+                    power = max(power or 0, kw) if kw else power
+                continue
+            count = socket_count(value)
+            if count:
+                sockets[name] = sockets.get(name, 0) + count
+        for key in ("charging_station:output", "maxpower", "output"):
+            kw = parse_kw(tags.get(key))
+            power = max(power or 0, kw) if kw else power
+        if sockets:
+            parts.append("sockets=" + ",".join(f"{name}:{count}" for name, count in sorted(sockets.items())))
+        if power:
+            parts.append(f"kw={round(power)}")
+        capacity = tags.get("capacity", "")
+        if capacity.isdigit() and 0 < int(capacity) < 1000:
+            parts.append(f"points={int(capacity)}")
+    if tags.get("opening_hours", "").strip() == "24/7":
+        parts.append("h24")
+    return ";".join(parts) or None
+
+
+def place_kind(tags):
+    """fuel or charging for a station a car can use, None for others."""
+    kind = PLACE_TAGS.get(tags.get("amenity"))
+    if kind is None or tags.get("access") in NO_ACCESS or tags.get("motorcar") == "no" or tags.get("motor_vehicle") == "no":
+        return None
+    if kind == "fuel" and (tags.get("boat") == "yes" or tags.get("aeroway")):
+        return None
+    if kind == "charging":
+        sockets = {SOCKETS.get(k[7:]) for k in tags if k.startswith("socket:") and ":" not in k[7:] and tags[k] not in ("no", "0")}
+        for_bikes = any(tags.get(v) == "yes" for v in ("bicycle", "scooter", "motorcycle")) and tags.get("motorcar") != "yes"
+        if for_bikes and not sockets & CAR_SOCKETS:
+            return None
+    return kind
+
+
+def place_row(place_id, lat, lon, tags):
+    kind = place_kind(tags)
+    if kind is None:
+        return None
+    name = tags.get("name") or None
+    brand = tags.get("brand") or tags.get("operator") or tags.get("network") or None
+    return (place_id, round(lat, 6), round(lon, 6), kind, name, brand, place_details(kind, tags))
+
+
+def merge_places(nodes, areas):
+    """Areas without a node of the same kind nearby: the node usually has the details."""
+    if not nodes or not areas:
+        return nodes + areas
+    points = shapely.points(numpy.array([n[2] for n in nodes]), numpy.array([n[1] for n in nodes]))
+    tree = shapely.STRtree(points)
+    kept = []
+    for area in areas:
+        near = tree.query(shapely.points(area[2], area[1]), predicate="dwithin", distance=PLACE_MERGE_DEG)
+        if not any(nodes[i][3] == area[3] for i in near.tolist()):
+            kept.append(area)
+    return nodes + kept
+
+
+def read_places(pbf, boundary=None):
+    """Fuel and charging stations of an extract, or those inside boundary."""
+    wkb = osmium.geom.WKBFactory()
+    nodes, areas = [], []
+    wanted = osmium.filter.TagFilter(*(("amenity", value) for value in PLACE_TAGS))
+    for o in osmium.FileProcessor(str(pbf)).with_locations().with_areas(wanted).with_filter(wanted):
+        if o.is_node():
+            if o.location.valid():
+                row = place_row(f"osm:n{o.id}", o.location.lat, o.location.lon, {t.k: t.v for t in o.tags})
+                if row:
+                    nodes.append(row)
+        elif o.is_area():
+            tags = {t.k: t.v for t in o.tags}
+            if place_kind(tags) is None:
+                continue
+            try:
+                centre = shapely.centroid(shapely.from_wkb(wkb.create_multipolygon(o)))
+            except RuntimeError:
+                continue
+            areas.append(place_row(f"osm:a{o.id}", centre.y, centre.x, tags))
+    places = merge_places(nodes, areas)
+    if boundary is not None:
+        places = [p for p in places if shapely.contains_xy(boundary, p[2], p[1])]
+    return places
+
+
 def parse_outline(text, tolerance_m=OUTLINE_TOLERANCE_M):
     """Geofabrik .poly to simplified rings of flat lat, lon values. Holes are left out."""
     rings, ring = [], None
@@ -842,6 +994,16 @@ def main():
     db.close()
     step("hazards", t)
 
+    t = time.monotonic()
+    places = read_places(pbf, boundary)
+    place_path = args.out / f"{args.region}.places.sqlite"
+    db = new_database(place_path, PLACE_SCHEMA, {**meta, "layer": "places"})
+    db.executemany("INSERT OR IGNORE INTO place VALUES (?,?,?,?,?,?,?)", places)
+    db.commit()
+    db.execute("VACUUM")
+    db.close()
+    step("places", t)
+
     road_count = sum(c["ways"] for c in roads.by_class.values())
     report["roads"] = {
         "ways": road_count,
@@ -868,6 +1030,12 @@ def main():
         sys.exit(f"self test failed: {road_count} roads, {len(cameras)} cameras")
     if not found.hazards or not found.clearances:
         sys.exit(f"self test failed: {len(found.hazards)} hazards, {len(found.clearances)} clearances")
+    place_kinds = defaultdict(int)
+    for p in places:
+        place_kinds[p[3]] += 1
+    report["places"] = dict(sorted(place_kinds.items()))
+    if not place_kinds["fuel"] or not place_kinds["charging"]:
+        sys.exit(f"self test failed: places {dict(place_kinds)}")
     if region["country"] in DEFAULTS and not report["roads"]["km_default"]:
         sys.exit("self test failed: no default limits")
 
@@ -877,7 +1045,8 @@ def main():
     report["cameras_file"] = compress(camera_path)
     report["hazards_file"] = compress(hazard_path)
     report["clearance_file"] = compress(clearance_path)
-    for path in (road_path, camera_path, hazard_path, clearance_path):
+    report["places_file"] = compress(place_path)
+    for path in (road_path, camera_path, hazard_path, clearance_path, place_path):
         path.unlink()
 
     report_path = args.out / f"{args.region}.report.json"
