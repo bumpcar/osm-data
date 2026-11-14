@@ -1,424 +1,526 @@
 {
- "created": "2026-11-11T15:59:37Z",
+ "created": "2026-11-14T21:19:54Z",
  "data_date": "2026-11-08T21:21:00Z",
  "regions": {
   "AT": {
-   "roads": 561691,
-   "cameras": 1398,
-   "hazards": 13244,
-   "clearances": 19706,
-   "limits_bytes": 7198577,
+   "roads": 561764,
+   "cameras": 1401,
+   "hazards": 13240,
+   "clearances": 19712,
+   "places": {
+    "charging": 5931,
+    "fuel": 2886
+   },
+   "limits_bytes": 7199170,
    "seconds": {
-    "download": 55.2,
-    "roads": 317.9,
-    "cameras": 215.2,
-    "hazards": 83.0,
-    "compress_limits": 2.6
+    "download": 83.4,
+    "roads": 256.8,
+    "cameras": 166.7,
+    "hazards": 68.2,
+    "places": 31.8,
+    "compress_limits": 3.4
    }
   },
   "CH": {
-   "roads": 414495,
-   "cameras": 602,
-   "hazards": 10957,
-   "clearances": 13531,
-   "limits_bytes": 4706316,
+   "roads": 414833,
+   "cameras": 601,
+   "hazards": 10960,
+   "clearances": 13555,
+   "places": {
+    "charging": 3349,
+    "fuel": 3706
+   },
+   "limits_bytes": 4708403,
    "seconds": {
-    "download": 171.3,
-    "roads": 120.3,
-    "cameras": 76.1,
-    "hazards": 35.3,
-    "compress_limits": 1.5
+    "download": 45.4,
+    "roads": 171.5,
+    "cameras": 115.9,
+    "hazards": 47.5,
+    "places": 21.2,
+    "compress_limits": 2.3
    }
   },
   "DE-BB": {
-   "roads": 233304,
-   "cameras": 285,
-   "hazards": 6410,
-   "clearances": 6993,
-   "limits_bytes": 2255246,
-   "seconds": {
-    "download": 100.8,
-    "roads": 84.2,
-    "cameras": 52.9,
-    "hazards": 26.6,
-    "compress_limits": 0.7
-   }
+   "kept": true
   },
   "DE-BE": {
-   "roads": 91917,
+   "roads": 91937,
    "cameras": 68,
    "hazards": 2710,
-   "clearances": 2640,
-   "limits_bytes": 646985,
+   "clearances": 2637,
+   "places": {
+    "charging": 1744,
+    "fuel": 302
+   },
+   "limits_bytes": 647102,
    "seconds": {
-    "download": 32.8,
-    "roads": 22.7,
-    "cameras": 13.5,
-    "hazards": 9.8,
+    "download": 14.3,
+    "roads": 25.2,
+    "cameras": 16.3,
+    "hazards": 10.8,
+    "places": 4.1,
     "compress_limits": 0.2
    }
   },
   "DE-BW": {
-   "roads": 571800,
-   "cameras": 1559,
-   "hazards": 15275,
-   "clearances": 22565,
-   "limits_bytes": 5946132,
-   "seconds": {
-    "download": 90.4,
-    "roads": 240.9,
-    "cameras": 145.0,
-    "hazards": 75.1,
-    "compress_limits": 2.4
-   }
+   "kept": true
   },
   "DE-BY": {
-   "roads": 754668,
+   "roads": 755358,
    "cameras": 143,
-   "hazards": 14591,
-   "clearances": 30579,
-   "limits_bytes": 8572768,
+   "hazards": 14592,
+   "clearances": 30635,
+   "places": {
+    "charging": 6929,
+    "fuel": 3096
+   },
+   "limits_bytes": 8576957,
    "seconds": {
-    "download": 119.4,
-    "roads": 334.1,
-    "cameras": 206.9,
-    "hazards": 97.3,
-    "compress_limits": 3.3
+    "download": 72.9,
+    "roads": 329.1,
+    "cameras": 209.4,
+    "hazards": 97.0,
+    "places": 36.5,
+    "compress_limits": 3.8
    }
   },
   "DE-HB": {
-   "roads": 16900,
+   "roads": 16905,
    "cameras": 55,
-   "hazards": 1555,
+   "hazards": 1561,
    "clearances": 1351,
-   "limits_bytes": 153516,
+   "places": {
+    "charging": 191,
+    "fuel": 121
+   },
+   "limits_bytes": 153536,
    "seconds": {
-    "download": 7.8,
-    "roads": 7.1,
-    "cameras": 4.3,
-    "hazards": 2.4,
+    "download": 3.0,
+    "roads": 4.0,
+    "cameras": 2.4,
+    "hazards": 1.4,
+    "places": 0.6,
     "compress_limits": 0.0
    }
   },
   "DE-HE": {
-   "roads": 309469,
+   "roads": 309546,
    "cameras": 853,
-   "hazards": 7071,
-   "clearances": 8205,
-   "limits_bytes": 3098667,
+   "hazards": 7074,
+   "clearances": 8209,
+   "places": {
+    "charging": 3076,
+    "fuel": 1330
+   },
+   "limits_bytes": 3099074,
    "seconds": {
-    "download": 135.0,
-    "roads": 72.6,
-    "cameras": 42.4,
-    "hazards": 21.2,
-    "compress_limits": 0.5
+    "download": 20.5,
+    "roads": 132.3,
+    "cameras": 83.1,
+    "hazards": 37.6,
+    "places": 14.0,
+    "compress_limits": 1.0
    }
   },
   "DE-HH": {
-   "roads": 39914,
-   "cameras": 36,
-   "hazards": 1167,
-   "clearances": 1818,
-   "limits_bytes": 338765,
-   "seconds": {
-    "download": 8.3,
-    "roads": 12.7,
-    "cameras": 8.4,
-    "hazards": 5.1,
-    "compress_limits": 0.1
-   }
+   "kept": true
   },
   "DE-MV": {
-   "roads": 102053,
+   "roads": 102073,
    "cameras": 99,
-   "hazards": 2047,
+   "hazards": 2039,
    "clearances": 2592,
-   "limits_bytes": 1225160,
+   "places": {
+    "charging": 762,
+    "fuel": 416
+   },
+   "limits_bytes": 1225224,
    "seconds": {
-    "download": 8.9,
-    "roads": 47.5,
-    "cameras": 31.4,
-    "hazards": 13.6,
+    "download": 11.7,
+    "roads": 39.0,
+    "cameras": 24.8,
+    "hazards": 11.4,
+    "places": 5.4,
     "compress_limits": 0.3
    }
   },
   "DE-NI": {
-   "roads": 463663,
+   "roads": 463786,
    "cameras": 643,
-   "hazards": 11835,
-   "clearances": 25410,
-   "limits_bytes": 4940711,
+   "hazards": 11851,
+   "clearances": 25422,
+   "places": {
+    "charging": 4119,
+    "fuel": 2373
+   },
+   "limits_bytes": 4941589,
    "seconds": {
-    "download": 73.0,
-    "roads": 194.8,
-    "cameras": 117.4,
-    "hazards": 58.2,
-    "compress_limits": 2.3
+    "download": 47.3,
+    "roads": 122.5,
+    "cameras": 68.1,
+    "hazards": 42.9,
+    "places": 19.6,
+    "compress_limits": 2.6
    }
   },
   "DE-NW": {
-   "roads": 721828,
+   "roads": 722072,
    "cameras": 944,
-   "hazards": 19215,
-   "clearances": 21836,
-   "limits_bytes": 7242659,
+   "hazards": 19210,
+   "clearances": 21845,
+   "places": {
+    "charging": 9676,
+    "fuel": 3498
+   },
+   "limits_bytes": 7244857,
    "seconds": {
-    "download": 266.9,
-    "roads": 348.3,
-    "cameras": 217.3,
-    "hazards": 101.6,
-    "compress_limits": 3.0
+    "download": 77.5,
+    "roads": 271.4,
+    "cameras": 164.0,
+    "hazards": 84.9,
+    "places": 37.8,
+    "compress_limits": 2.9
    }
   },
   "DE-RP": {
-   "roads": 241377,
+   "roads": 241550,
    "cameras": 108,
-   "hazards": 5365,
-   "clearances": 6350,
-   "limits_bytes": 2626666,
+   "hazards": 5367,
+   "clearances": 6354,
+   "places": {
+    "charging": 1462,
+    "fuel": 919
+   },
+   "limits_bytes": 2627474,
    "seconds": {
-    "download": 18.1,
-    "roads": 104.1,
-    "cameras": 66.9,
-    "hazards": 30.0,
-    "compress_limits": 0.7
+    "download": 25.6,
+    "roads": 106.6,
+    "cameras": 66.8,
+    "hazards": 31.2,
+    "places": 11.8,
+    "compress_limits": 1.1
    }
   },
   "DE-SH": {
-   "roads": 136716,
+   "roads": 136769,
    "cameras": 83,
-   "hazards": 2848,
-   "clearances": 7356,
-   "limits_bytes": 1633014,
+   "hazards": 2847,
+   "clearances": 7354,
+   "places": {
+    "charging": 1578,
+    "fuel": 685
+   },
+   "limits_bytes": 1633283,
    "seconds": {
-    "download": 53.3,
-    "roads": 58.5,
-    "cameras": 35.2,
-    "hazards": 16.3,
+    "download": 21.8,
+    "roads": 60.8,
+    "cameras": 37.9,
+    "hazards": 17.3,
+    "places": 6.7,
     "compress_limits": 0.5
    }
   },
   "DE-SL": {
-   "roads": 43583,
+   "roads": 43592,
    "cameras": 58,
-   "hazards": 1015,
-   "clearances": 1599,
-   "limits_bytes": 469760,
+   "hazards": 1016,
+   "clearances": 1601,
+   "places": {
+    "charging": 334,
+    "fuel": 195
+   },
+   "limits_bytes": 469818,
    "seconds": {
-    "download": 17.7,
-    "roads": 19.1,
-    "cameras": 11.8,
-    "hazards": 5.8,
+    "download": 9.3,
+    "roads": 11.2,
+    "cameras": 6.7,
+    "hazards": 3.5,
+    "places": 1.6,
     "compress_limits": 0.1
    }
   },
   "DE-SN": {
-   "roads": 219963,
+   "roads": 219969,
    "cameras": 270,
-   "hazards": 6610,
-   "clearances": 9357,
-   "limits_bytes": 2313259,
+   "hazards": 6606,
+   "clearances": 9359,
+   "places": {
+    "charging": 1783,
+    "fuel": 795
+   },
+   "limits_bytes": 2313198,
    "seconds": {
-    "download": 21.6,
-    "roads": 97.5,
-    "cameras": 61.3,
-    "hazards": 29.4,
-    "compress_limits": 0.8
-   }
-  },
-  "DE-ST": {
-   "roads": 163393,
-   "cameras": 67,
-   "hazards": 3449,
-   "clearances": 7232,
-   "limits_bytes": 1606112,
-   "seconds": {
-    "download": 21.3,
-    "roads": 55.1,
-    "cameras": 35.1,
-    "hazards": 16.0,
-    "compress_limits": 0.4
-   }
-  },
-  "DE-TH": {
-   "roads": 138882,
-   "cameras": 86,
-   "hazards": 3475,
-   "clearances": 4820,
-   "limits_bytes": 1502697,
-   "seconds": {
-    "download": 15.0,
-    "roads": 59.5,
-    "cameras": 37.5,
-    "hazards": 16.6,
-    "compress_limits": 0.5
-   }
-  },
-  "IT-21": {
-   "roads": 224000,
-   "cameras": 568,
-   "hazards": 3568,
-   "clearances": 5147,
-   "limits_bytes": 2809647,
-   "seconds": {
-    "download": 0.0,
-    "roads": 250.0,
-    "cameras": 166.7,
-    "hazards": 69.9,
+    "download": 33.8,
+    "roads": 78.1,
+    "cameras": 46.0,
+    "hazards": 22.9,
+    "places": 9.8,
     "compress_limits": 0.9
    }
   },
+  "DE-ST": {
+   "roads": 163508,
+   "cameras": 67,
+   "hazards": 3449,
+   "clearances": 7264,
+   "places": {
+    "charging": 669,
+    "fuel": 581
+   },
+   "limits_bytes": 1606761,
+   "seconds": {
+    "download": 12.2,
+    "roads": 70.9,
+    "cameras": 46.0,
+    "hazards": 19.9,
+    "places": 7.8,
+    "compress_limits": 0.5
+   }
+  },
+  "DE-TH": {
+   "roads": 138932,
+   "cameras": 86,
+   "hazards": 3477,
+   "clearances": 4837,
+   "places": {
+    "charging": 901,
+    "fuel": 538
+   },
+   "limits_bytes": 1502890,
+   "seconds": {
+    "download": 13.6,
+    "roads": 62.2,
+    "cameras": 40.1,
+    "hazards": 17.0,
+    "places": 6.5,
+    "compress_limits": 0.4
+   }
+  },
+  "IT-21": {
+   "roads": 223819,
+   "cameras": 568,
+   "hazards": 3569,
+   "clearances": 5151,
+   "places": {
+    "charging": 954,
+    "fuel": 1692
+   },
+   "limits_bytes": 2809096,
+   "seconds": {
+    "download": 0.0,
+    "roads": 201.1,
+    "cameras": 132.9,
+    "hazards": 57.6,
+    "places": 23.3,
+    "compress_limits": 1.0
+   }
+  },
   "IT-23": {
-   "roads": 11778,
+   "roads": 11777,
    "cameras": 25,
    "hazards": 133,
    "clearances": 125,
-   "limits_bytes": 172249,
+   "places": {
+    "charging": 107,
+    "fuel": 75
+   },
+   "limits_bytes": 172237,
    "seconds": {
     "download": 0.0,
-    "roads": 238.8,
-    "cameras": 177.1,
-    "hazards": 75.5,
+    "roads": 189.4,
+    "cameras": 136.1,
+    "hazards": 59.1,
+    "places": 23.7,
     "compress_limits": 0.0
    }
   },
   "IT-25": {
-   "roads": 413104,
-   "cameras": 852,
+   "roads": 413210,
+   "cameras": 853,
    "hazards": 5892,
-   "clearances": 6901,
-   "limits_bytes": 4095562,
+   "clearances": 6905,
+   "places": {
+    "charging": 1455,
+    "fuel": 2934
+   },
+   "limits_bytes": 4096071,
    "seconds": {
     "download": 0.0,
-    "roads": 269.9,
-    "cameras": 174.7,
-    "hazards": 72.2,
-    "compress_limits": 1.7
+    "roads": 275.7,
+    "cameras": 176.2,
+    "hazards": 75.0,
+    "places": 26.1,
+    "compress_limits": 1.4
    }
   },
   "IT-34": {
-   "roads": 245267,
-   "cameras": 762,
-   "hazards": 3922,
-   "clearances": 4242,
-   "limits_bytes": 2779180,
+   "roads": 245374,
+   "cameras": 763,
+   "hazards": 3927,
+   "clearances": 4245,
+   "places": {
+    "charging": 934,
+    "fuel": 1893
+   },
+   "limits_bytes": 2779696,
    "seconds": {
     "download": 0.0,
-    "roads": 262.8,
-    "cameras": 177.3,
-    "hazards": 70.6,
-    "compress_limits": 0.8
+    "roads": 155.9,
+    "cameras": 99.5,
+    "hazards": 41.1,
+    "places": 19.3,
+    "compress_limits": 0.6
    }
   },
   "IT-36": {
-   "roads": 79350,
-   "cameras": 193,
-   "hazards": 1491,
+   "roads": 79358,
+   "cameras": 194,
+   "hazards": 1493,
    "clearances": 1735,
-   "limits_bytes": 889919,
+   "places": {
+    "charging": 278,
+    "fuel": 492
+   },
+   "limits_bytes": 889926,
    "seconds": {
     "download": 0.0,
-    "roads": 197.6,
-    "cameras": 138.2,
-    "hazards": 53.4,
+    "roads": 154.9,
+    "cameras": 109.4,
+    "hazards": 50.2,
+    "places": 23.9,
     "compress_limits": 0.2
    }
   },
   "IT-42": {
-   "roads": 59908,
-   "cameras": 122,
+   "roads": 59916,
+   "cameras": 123,
    "hazards": 988,
    "clearances": 2798,
-   "limits_bytes": 899691,
+   "places": {
+    "charging": 271,
+    "fuel": 519
+   },
+   "limits_bytes": 899720,
    "seconds": {
     "download": 0.0,
-    "roads": 243.1,
-    "cameras": 179.0,
-    "hazards": 75.0,
+    "roads": 135.0,
+    "cameras": 92.1,
+    "hazards": 42.3,
+    "places": 18.9,
     "compress_limits": 0.1
    }
   },
   "IT-45": {
-   "roads": 211894,
+   "roads": 211929,
    "cameras": 620,
-   "hazards": 2368,
-   "clearances": 2453,
-   "limits_bytes": 2721078,
+   "hazards": 2374,
+   "clearances": 2459,
+   "places": {
+    "charging": 703,
+    "fuel": 1797
+   },
+   "limits_bytes": 2721256,
    "seconds": {
     "download": 0.0,
-    "roads": 951.1,
-    "cameras": 686.0,
-    "hazards": 314.0,
-    "compress_limits": 0.7
+    "roads": 574.6,
+    "cameras": 399.3,
+    "hazards": 204.0,
+    "places": 89.6,
+    "compress_limits": 0.5
    }
   },
   "IT-52": {
-   "roads": 176449,
-   "cameras": 572,
-   "hazards": 2761,
-   "clearances": 2700,
-   "limits_bytes": 2327868,
+   "roads": 176480,
+   "cameras": 575,
+   "hazards": 2763,
+   "clearances": 2698,
+   "places": {
+    "charging": 667,
+    "fuel": 1554
+   },
+   "limits_bytes": 2328115,
    "seconds": {
     "download": 0.0,
-    "roads": 140.9,
-    "cameras": 90.0,
-    "hazards": 40.0,
-    "compress_limits": 0.7
+    "roads": 135.8,
+    "cameras": 89.0,
+    "hazards": 38.2,
+    "places": 14.5,
+    "compress_limits": 0.5
    }
   },
   "IT-55": {
-   "roads": 52727,
+   "roads": 52745,
    "cameras": 164,
    "hazards": 498,
    "clearances": 397,
-   "limits_bytes": 810381,
+   "places": {
+    "charging": 143,
+    "fuel": 469
+   },
+   "limits_bytes": 810505,
    "seconds": {
     "download": 0.0,
-    "roads": 96.6,
-    "cameras": 64.4,
-    "hazards": 28.1,
+    "roads": 129.9,
+    "cameras": 91.3,
+    "hazards": 37.9,
+    "places": 13.7,
     "compress_limits": 0.1
    }
   },
   "IT-57": {
-   "roads": 89726,
+   "roads": 89735,
    "cameras": 183,
    "hazards": 743,
    "clearances": 973,
-   "limits_bytes": 1250524,
+   "places": {
+    "charging": 182,
+    "fuel": 728
+   },
+   "limits_bytes": 1250748,
    "seconds": {
     "download": 0.0,
-    "roads": 171.7,
-    "cameras": 123.1,
-    "hazards": 51.8,
-    "compress_limits": 0.4
+    "roads": 139.3,
+    "cameras": 92.2,
+    "hazards": 41.7,
+    "places": 15.7,
+    "compress_limits": 0.2
    }
   },
   "IT-62": {
-   "roads": 157977,
+   "roads": 158005,
    "cameras": 234,
-   "hazards": 1916,
+   "hazards": 1918,
    "clearances": 1373,
-   "limits_bytes": 2045697,
+   "places": {
+    "charging": 473,
+    "fuel": 2213
+   },
+   "limits_bytes": 2045760,
    "seconds": {
     "download": 0.0,
-    "roads": 736.2,
-    "cameras": 526.5,
-    "hazards": 235.3,
-    "compress_limits": 0.5
+    "roads": 740.5,
+    "cameras": 529.3,
+    "hazards": 242.1,
+    "places": 93.6,
+    "compress_limits": 0.4
    }
   },
   "IT-65": {
-   "roads": 79311,
+   "roads": 79321,
    "cameras": 99,
    "hazards": 1570,
    "clearances": 1511,
-   "limits_bytes": 1155546,
+   "places": {
+    "charging": 204,
+    "fuel": 630
+   },
+   "limits_bytes": 1155585,
    "seconds": {
     "download": 0.0,
-    "roads": 209.4,
-    "cameras": 156.2,
-    "hazards": 57.5,
+    "roads": 208.6,
+    "cameras": 152.8,
+    "hazards": 57.3,
+    "places": 21.7,
     "compress_limits": 0.3
    }
   },
@@ -427,110 +529,150 @@
    "cameras": 5,
    "hazards": 229,
    "clearances": 75,
-   "limits_bytes": 410720,
+   "places": {
+    "charging": 40,
+    "fuel": 169
+   },
+   "limits_bytes": 410695,
    "seconds": {
     "download": 0.0,
-    "roads": 206.9,
-    "cameras": 157.4,
-    "hazards": 57.5,
+    "roads": 198.8,
+    "cameras": 152.4,
+    "hazards": 55.5,
+    "places": 21.3,
     "compress_limits": 0.1
    }
   },
   "IT-72": {
-   "roads": 137528,
+   "roads": 137556,
    "cameras": 148,
    "hazards": 2034,
    "clearances": 677,
-   "limits_bytes": 1976713,
+   "places": {
+    "charging": 178,
+    "fuel": 1918
+   },
+   "limits_bytes": 1976831,
    "seconds": {
     "download": 0.0,
-    "roads": 223.0,
-    "cameras": 160.6,
-    "hazards": 57.6,
-    "compress_limits": 0.5
+    "roads": 149.9,
+    "cameras": 105.5,
+    "hazards": 44.3,
+    "places": 19.9,
+    "compress_limits": 0.4
    }
   },
   "IT-75": {
-   "roads": 167723,
+   "roads": 167878,
    "cameras": 82,
    "hazards": 1995,
-   "clearances": 501,
-   "limits_bytes": 2005379,
+   "clearances": 503,
+   "places": {
+    "charging": 310,
+    "fuel": 1473
+   },
+   "limits_bytes": 2005866,
    "seconds": {
     "download": 0.0,
-    "roads": 944.7,
-    "cameras": 702.5,
-    "hazards": 306.1,
+    "roads": 756.2,
+    "cameras": 529.1,
+    "hazards": 261.0,
+    "places": 114.1,
     "compress_limits": 0.6
    }
   },
   "IT-77": {
-   "roads": 39810,
+   "roads": 39823,
    "cameras": 11,
    "hazards": 336,
    "clearances": 90,
-   "limits_bytes": 773596,
+   "places": {
+    "charging": 48,
+    "fuel": 264
+   },
+   "limits_bytes": 773923,
    "seconds": {
     "download": 0.0,
-    "roads": 205.8,
-    "cameras": 148.8,
-    "hazards": 53.0,
+    "roads": 166.2,
+    "cameras": 121.5,
+    "hazards": 43.7,
+    "places": 19.2,
     "compress_limits": 0.1
    }
   },
   "IT-78": {
-   "roads": 92689,
+   "roads": 92696,
    "cameras": 41,
    "hazards": 877,
    "clearances": 363,
-   "limits_bytes": 1616232,
+   "places": {
+    "charging": 158,
+    "fuel": 743
+   },
+   "limits_bytes": 1616184,
    "seconds": {
     "download": 0.0,
-    "roads": 119.1,
-    "cameras": 81.9,
-    "hazards": 31.6,
-    "compress_limits": 0.1
+    "roads": 172.6,
+    "cameras": 123.0,
+    "hazards": 51.0,
+    "places": 23.3,
+    "compress_limits": 0.3
    }
   },
   "IT-82": {
-   "roads": 210412,
+   "roads": 210473,
    "cameras": 81,
-   "hazards": 2913,
+   "hazards": 2914,
    "clearances": 608,
-   "limits_bytes": 2783038,
+   "places": {
+    "charging": 571,
+    "fuel": 1775
+   },
+   "limits_bytes": 2783681,
    "seconds": {
     "download": 0.0,
-    "roads": 113.6,
-    "cameras": 67.6,
-    "hazards": 29.9,
-    "compress_limits": 0.7
+    "roads": 90.4,
+    "cameras": 55.7,
+    "hazards": 27.0,
+    "places": 10.3,
+    "compress_limits": 0.9
    }
   },
   "IT-88": {
-   "roads": 120753,
+   "roads": 120790,
    "cameras": 32,
    "hazards": 2085,
    "clearances": 782,
-   "limits_bytes": 1568822,
+   "places": {
+    "charging": 173,
+    "fuel": 648
+   },
+   "limits_bytes": 1569073,
    "seconds": {
     "download": 0.0,
-    "roads": 102.3,
-    "cameras": 68.2,
-    "hazards": 29.9,
+    "roads": 61.8,
+    "cameras": 41.4,
+    "hazards": 20.1,
+    "places": 7.7,
     "compress_limits": 0.4
    }
   },
   "IT-BZ": {
-   "roads": 33280,
+   "roads": 33286,
    "cameras": 152,
-   "hazards": 1450,
+   "hazards": 1453,
    "clearances": 1068,
-   "limits_bytes": 453587,
+   "places": {
+    "charging": 303,
+    "fuel": 161
+   },
+   "limits_bytes": 453598,
    "seconds": {
     "download": 0.0,
-    "roads": 242.4,
-    "cameras": 184.9,
-    "hazards": 71.8,
+    "roads": 152.4,
+    "cameras": 106.4,
+    "hazards": 49.5,
+    "places": 23.6,
     "compress_limits": 0.1
    }
   },
@@ -539,12 +681,17 @@
    "cameras": 180,
    "hazards": 900,
    "clearances": 1041,
-   "limits_bytes": 518698,
+   "places": {
+    "charging": 221,
+    "fuel": 214
+   },
+   "limits_bytes": 518712,
    "seconds": {
     "download": 0.0,
-    "roads": 149.7,
-    "cameras": 103.7,
-    "hazards": 44.8,
+    "roads": 250.7,
+    "cameras": 184.8,
+    "hazards": 72.0,
+    "places": 28.0,
     "compress_limits": 0.1
    }
   }

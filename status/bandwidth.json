@@ -1,9 +1,9 @@
 {
  "releases": {
   "data-2026-11-08-r15": {
-   "downloads": 319,
-   "bytes": 356551682,
-   "index_downloads": 8
+   "downloads": 399,
+   "bytes": 447855876,
+   "index_downloads": 9
   },
   "data-2026-11-05-r14": {
    "downloads": 265,
@@ -21,6 +21,11 @@
    "index_downloads": 2
   },
   "data-2026-11-08-r17": {
+   "downloads": 255,
+   "bytes": 122604791,
+   "index_downloads": 9
+  },
+  "data-2026-11-08-r18": {
    "downloads": 0,
    "bytes": 0,
    "index_downloads": 0
@@ -36,6 +41,11 @@
    "date": "2026-11-11",
    "total_bytes": 838969487,
    "since_last_gb": 0.45
+  },
+  {
+   "date": "2026-11-14",
+   "total_bytes": 1052878472,
+   "since_last_gb": 0.21
   }
  ]
 }
